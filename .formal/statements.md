@@ -56,7 +56,7 @@ Claims about the code in plain words, each proved or disproved by the swarm: `- 
   - [x] `WETH9.withdraw` — WETH9 (src/WETH9.sol:38): no call to it by another account makes the claim false
   - [x] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): no call to it by another account makes the claim false
   - [x] `WETH9.transferFrom` — WETH9 (src/WETH9.sol:59): no call to it by another account makes the claim false
-- [~] S-06 · you · The sum of `WETH9.balanceOf` over all accounts equals `totalSupply()`, i.e. `address(this).balance`, apart from ETH forced in (selfdestruct or coinbase): without forced ETH it is exact equality, and with it the sum is lower by exactly the forced amount.
+- [x] S-06 · you · The sum of `WETH9.balanceOf` over all accounts equals `totalSupply()`, i.e. `address(this).balance`, apart from ETH forced in (selfdestruct or coinbase): without forced ETH it is exact equality, and with it the sum is lower by exactly the forced amount.
   - why: If it fails, some WETH is not backed by ETH, or some deposited ETH can't be withdrawn.
   - kind: invariant
   - means: In every reachable state of WETH9, the sum of balanceOf[a] over all addresses a plus the ETH forced into the contract (via selfdestruct or as a coinbase/block reward, which runs no code) equals address(this).balance, which is what totalSupply() returns. This must hold after every state-changing entry point (deposit and the receive/fallback path, withdraw, transfer, transferFrom, approve). If no ETH was ever forced in, the sum of balances is exactly totalSupply(). The forced amount is the total ETH received without going through deposit or the fallback.
@@ -64,7 +64,7 @@ Claims about the code in plain words, each proved or disproved by the swarm: `- 
   - assumes: withdraw's ETH transfer to msg.sender either succeeds in full or reverts the whole call (re-entry during the send leaves the relation intact)
   - assumes: The contract starts with zero balance and zero balanceOf everywhere, apart from ETH already forced in, which counts toward the forced amount
   - [x] `WETH9.approve` — WETH9 (src/WETH9.sol:49): if it holds before a successful call, it holds after
-  - [~] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
+  - [x] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
   - [x] `WETH9.deposit` — WETH9 (src/WETH9.sol:34): if it holds before a successful call, it holds after
   - [x] `WETH9.withdraw` — WETH9 (src/WETH9.sol:38): if it holds before a successful call, it holds after
   - [x] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): if it holds before a successful call, it holds after

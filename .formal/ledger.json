@@ -77,8 +77,8 @@
     }
   },
   "checked": {
-    "at": 1793134157457,
-    "sources": "3:b46ecf9ea98ca029",
+    "at": 1793134207556,
+    "sources": "3:bd86ef3937a53543",
     "results": {
       "S01.WETH9_": {
         "ok": true,
@@ -292,6 +292,14 @@
       "S06.WETH9_deposit": {
         "ok": true,
         "ty": "@S06.WETH9_deposit : ∀ {σ : Type} (ext : WETH9.Ext σ) (env : FormalAst.Env) (w : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    ∀ (forced : Nat) (S : List Nat),\n      S.Nodup →\n        env.sender ∈ S →\n          env.value ≤ env.balance →\n            env.balance < 2 ^ 256 →\n              (∀ (a : Nat), ¬a ∈ S → (ext.get w).balanceOf a = 0) →\n                (List.map (ext.get w).balanceOf S).sum + forced = env.balance - env.value →\n                  ∀ (r : Unit) (w' : σ),\n                    (ReaderT.run (WETH9.WETH9.deposit ext) env).run w = Except.ok (r, w') →\n                      (∀ (a : Nat), ¬a ∈ S → (ext.get w').balanceOf a = 0) ∧\n                        (List.map (ext.get w').balanceOf S).sum + forced = env.balance",
+        "axioms": [
+          "propext",
+          "Quot.sound"
+        ]
+      },
+      "S06.WETH9_fallback": {
+        "ok": true,
+        "ty": "@S06.WETH9_fallback : ∀ {σ : Type} (ext : WETH9.Ext σ) (env : FormalAst.Env) (w : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    ∀ (forced : Nat) (S : List Nat),\n      S.Nodup →\n        env.sender ∈ S →\n          env.value ≤ env.balance →\n            env.balance < 2 ^ 256 →\n              (∀ (a : Nat), ¬a ∈ S → (ext.get w).balanceOf a = 0) →\n                (List.map (ext.get w).balanceOf S).sum + forced = env.balance - env.value →\n                  ∀ (r : Unit) (w' : σ),\n                    (ReaderT.run (WETH9.WETH9.«» ext) env).run w = Except.ok (r, w') →\n                      (∀ (a : Nat), ¬a ∈ S → (ext.get w').balanceOf a = 0) ∧\n                        (List.map (ext.get w').balanceOf S).sum + forced = env.balance",
         "axioms": [
           "propext",
           "Quot.sound"

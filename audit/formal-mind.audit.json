@@ -383,6 +383,57 @@
         "formal/Refinement/Statements/S05/WETH9Transfer.lean",
         "formal/Refinement/Statements/S05/WETH9TransferFrom.lean"
       ]
+    },
+    {
+      "id": "P-S06",
+      "statement": "S-06",
+      "title": "The sum of `WETH9.balanceOf` over all accounts equals `totalSupply()`, i.e. `address(this).balance`, apart from ETH forced in (selfdestruct or coinbase): without forced ETH it is exact equality, and with it the sum is lower by exactly the forced amount.",
+      "status": "verified",
+      "description": "In every reachable state of WETH9, the sum of balanceOf[a] over all addresses a plus the ETH forced into the contract (via selfdestruct or as a coinbase/block reward, which runs no code) equals address(this).balance, which is what totalSupply() returns. This must hold after every state-changing entry point (deposit and the receive/fallback path, withdraw, transfer, transferFrom, approve). If no ETH was ever forced in, the sum of balances is exactly totalSupply(). The forced amount is the total ETH received without going through deposit or the fallback.\n\n**`WETH9.approve`**\n\n`WETH9.approve` preserves the S-06 balance relation. If, before the call, every account outside a finite list `S` has zero `balanceOf` and `Σ_{a∈S} balanceOf a + forced = address(this).balance` (the value `totalSupply()` returns, with `forced` the ghost total of forced-in ETH), then on every successful run both facts still hold in the post-call state. `approve` writes only `allowance[msg.sender][guy]`, so `balanceOf` is unchanged, and it moves no ETH.\n\n**`WETH9.«»`**\n\nThe fallback `WETH9.«»` (which runs `deposit`) preserves S-06. Take a duplicate-free finite set S of accounts that contains `msg.sender`, with every account outside S at zero balance. Suppose that before the call `Σ_{a∈S} balanceOf[a] + forced = address(this).balance − msg.value`. Then on success, `Σ_{a∈S} balanceOf[a] + forced = address(this).balance` (the value `totalSupply()` returns), and every account outside S still has zero balance. The unchecked `balanceOf[msg.sender] += msg.value` cannot wrap under these hypotheses.\n\n**`WETH9.deposit`**\n\nS-06 is preserved by `WETH9.deposit`. Take a duplicate-free list `S` of addresses that contains `msg.sender` and covers every account with a nonzero balance. Suppose `Σ_{a∈S} balanceOf a + forced` equals the contract's balance before `msg.value` arrived (`env.balance - env.value`). Then after a successful `deposit`, `Σ_{a∈S} balanceOf a + forced = env.balance`, which is `address(this).balance`, the value `totalSupply()` returns. Every account outside `S` still holds zero. The unchecked `+=` cannot wrap: the sender's balance plus `msg.value` is at most the contract balance, which is below 2^256.\n\n**`WETH9.withdraw`**\n\nS-06 holds for `WETH9.withdraw`. The invariant is `Σ_{a∈S} balanceOf[a] + forced = address(this).balance`, where `S` is a duplicate-free list of accounts containing `msg.sender`, every balance outside `S` is zero, and `forced` is the ghost total of ETH forced in.\n\nIf the invariant holds with the contract balance `env.balance` before a successful `withdraw(wad)`, then afterwards:\n- every account outside `S` still has zero balance;\n- `Σ_{a∈S} balanceOf[a] + forced = env.balance − wad`, which is the contract's balance after `wad` wei go to `msg.sender`;\n- `wad ≤ env.balance`, so the subtraction never truncates.\n\nThe proof has three steps:\n- By the guard `balanceOf[msg.sender] ≥ wad`, the unchecked subtraction is exact.\n- Lowering one term of the sum by `wad` lowers the sum by exactly `wad` (lemma `S06.wd_sum_upd_sub`).\n- A call that reverts, or whose send fails, has no successful post-state.\n\n**`WETH9.transfer`**\n\n`WETH9.transfer` preserves the S-06 solvency relation. Suppose that before the call `S` is a list of accounts with no repeats, every `balanceOf` outside `S` is zero, and `Σ_{a∈S} balanceOf a + forced = address(this).balance`, where `forced` is the total ETH forced into the contract. Then after any successful call there is a list `S'` with no repeats (`S` with `msg.sender` and `dst` added) such that every balance outside `S'` is zero and `Σ_{a∈S'} balanceOf' a + forced = address(this).balance`. `transfer` is nonpayable and sends no ETH, so the contract's balance is the same before and after. The debit and credit cannot wrap, because the invariant bounds `balanceOf[sender] + balanceOf[dst]` by the contract balance.\n\n**`WETH9.transferFrom`**\n\n`WETH9.transferFrom` preserves S-06. Let `S` be a duplicate-free list of accounts such that every `balanceOf` outside `S` is zero and `Σ_{a∈S} balanceOf a + forced = address(this).balance`. Then after any successful `transferFrom(src, dst, wad)` there is a duplicate-free list `S'` such that every post-state `balanceOf` outside `S'` is zero and `Σ_{a∈S'} balanceOf' a + forced = address(this).balance`. This holds on both allowance branches and when `src = dst`. The call is nonpayable, so the contract's ETH balance in the conclusion is the same value as in the hypothesis.\n\n**Assumptions.** Forced ETH is modelled as ghost state: the running total of ETH that arrived without calling deposit or the fallback. withdraw's ETH transfer to msg.sender either succeeds in full or reverts the whole call (re-entry during the send leaves the relation intact). The contract starts with zero balance and zero balanceOf everywhere, apart from ETH already forced in, which counts toward the forced amount. The storage accessor satisfies `ext.get (ext.set w s) = s`. The contract's ETH balance is the call environment's `env.balance`, which the call cannot change (`approve` is nonpayable), and the forced-ETH ghost is fixed across the call. The sum over all addresses is written as a sum over a finite list `S`, with every account outside it holding a zero balance. `ext.get (ext.set w s) = s` (the storage round-trips). The ETH balance seen during the call already includes msg.value, and msg.value ≤ balance < 2^256. `forced` is ghost state. S is a duplicate-free list that contains the sender and covers every nonzero balance. `ext.get (ext.set w s) = s`. `env.value ≤ env.balance < 2^256`: the contract balance already includes `msg.value`. `forced` is a ghost counter for ETH forced into the contract. The sum over all addresses is represented by a finite duplicate-free support list `S` that contains the sender. - `ext.get (ext.set w s) = s`. - The sender's balance is below 2^256 (uint256 range). - The ETH send to `msg.sender` is opaque. When it succeeds, it is assumed to leave `balanceOf` exactly as it found it, meaning any re-entry nets out (the maintainer's re-entry assumption). - The contract's balance after the call is taken to be `env.balance − wad`, i.e. the send moves exactly `wad` wei out. The storage accessor is lawful (`get (set w s) = s`, `set (set w s) t = set w t`). the contract's ETH balance is below 2^256. the pre-state list `S` has no repeats. The storage lens `ext` is lawful: get-after-set returns the value set, and a second set overwrites the first. `address(this).balance < 2^256`. `forced` is ghost state that a nonpayable call leaves unchanged.",
+      "theorems": [
+        {
+          "name": "S06.WETH9_approve"
+        },
+        {
+          "name": "S06.WETH9_fallback"
+        },
+        {
+          "name": "S06.WETH9_"
+        },
+        {
+          "name": "S06.fb_sum_upd_add"
+        },
+        {
+          "name": "S06.fb_le_sum_mem"
+        },
+        {
+          "name": "S06.WETH9_deposit"
+        },
+        {
+          "name": "S06.WETH9_withdraw"
+        },
+        {
+          "name": "S06.wd_sum_upd_sub"
+        },
+        {
+          "name": "S06.WETH9_transfer"
+        },
+        {
+          "name": "S06.WETH9_transferFrom"
+        },
+        {
+          "name": "S06.TransferFromAux.tf_ok"
+        }
+      ],
+      "files": [
+        "formal/Refinement/Statements/S06/WETH9Approve.lean",
+        "formal/Refinement/Statements/S06/WETH9Fallback.lean",
+        "formal/Refinement/Statements/S06/WETH9Deposit.lean",
+        "formal/Refinement/Statements/S06/WETH9Withdraw.lean",
+        "formal/Refinement/Statements/S06/WETH9Transfer.lean",
+        "scratch_unused.txt",
+        "formal/Refinement/Statements/S06/WETH9TransferFrom.lean"
+      ]
     }
   ]
 }

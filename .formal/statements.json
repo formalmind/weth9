@@ -253,6 +253,22 @@
           "S06.TransferFromAux.tf_ok"
         ]
       }
+    },
+    "2": {
+      "theorem": "S06.WETH9_fallback",
+      "files": [
+        "formal/Refinement/Statements/S06/WETH9Fallback.lean"
+      ],
+      "notes": {
+        "statement": "The fallback `WETH9.«»` (which runs `deposit`) preserves S-06. Take a duplicate-free finite set S of accounts that contains `msg.sender`, with every account outside S at zero balance. Suppose that before the call `Σ_{a∈S} balanceOf[a] + forced = address(this).balance − msg.value`. Then on success, `Σ_{a∈S} balanceOf[a] + forced = address(this).balance` (the value `totalSupply()` returns), and every account outside S still has zero balance. The unchecked `balanceOf[msg.sender] += msg.value` cannot wrap under these hypotheses.",
+        "assumptions": "`ext.get (ext.set w s) = s` (the storage round-trips). The ETH balance seen during the call already includes msg.value, and msg.value ≤ balance < 2^256. `forced` is ghost state. S is a duplicate-free list that contains the sender and covers every nonzero balance.",
+        "theorems": [
+          "S06.WETH9_fallback",
+          "S06.WETH9_",
+          "S06.fb_sum_upd_add",
+          "S06.fb_le_sum_mem"
+        ]
+      }
     }
   },
   "S-03": {

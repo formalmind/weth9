@@ -62,4 +62,17 @@ theorem S06.WETH9_ {σ : Type} (ext : WETH9.Ext σ) (env : Env) (w : σ)
     rw [upd_other _ _ _ _ hne]; exact hS a ha
   · rw [hadd, S06.fb_sum_upd_add _ _ _ S hnd hsender]; omega
 
-#print axioms S06.WETH9_
+/-- S-06 preserved by the fallback `WETH9.«»`: `Σ_{a∈S} balanceOf a + forced = balance`
+holds after any successful call, given it held before `msg.value` arrived. -/
+theorem S06.WETH9_fallback {σ : Type} (ext : WETH9.Ext σ) (env : Env) (w : σ)
+    (hget : ∀ w s, ext.get (ext.set w s) = s) (forced : Nat) (S : List Nat)
+    (hnd : S.Nodup) (hsender : env.sender ∈ S)
+    (hval : env.value ≤ env.balance) (hbal : env.balance < 2 ^ 256)
+    (hS : ∀ a, a ∉ S → (ext.get w).balanceOf a = 0)
+    (hinv : (S.map (ext.get w).balanceOf).sum + forced = env.balance - env.value) :
+    ∀ (r : Unit) (w' : σ), ((WETH9.«» ext).run env).run w = .ok (r, w') →
+      (∀ a, a ∉ S → (ext.get w').balanceOf a = 0) ∧
+      (S.map (ext.get w').balanceOf).sum + forced = env.balance :=
+  S06.WETH9_ ext env w hget forced S hnd hsender hval hbal hS hinv
+
+#print axioms S06.WETH9_fallback
