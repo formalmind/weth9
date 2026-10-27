@@ -1,0 +1,215 @@
+{
+  "next_id": 1793124477,
+  "jobs": [
+    {
+      "id": 1793124466,
+      "kind": "prove",
+      "item": 1,
+      "text": "`WETH9.approve` — WETH9 (src/WETH9.sol:49): nonpayable · writes [allowance] · guards 0 · external calls 0",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [
+        "formal/Refinement/Swarm/WETH9Approve.lean"
+      ],
+      "summary": "I've proved `WETH9.approve` (plan item 1) in `formal/Refinement/Swarm/WETH9Approve.lean`, and `lake build Refinement.Swarm.WETH9Approve` passes with no `sorry`. No bug found: the function does what the Solidity says.\n\n- **`approve_spec`:** for any caller and any storage, the call succeeds, returns `true`, and the new storage is the old one with only `allowance[msg.sender][guy]` set to `wad`. Since it always succeeds, the function never reverts, which matches its zero guards. The proof is just unfolding the definition, so it's checked by `rfl`.\n- **`approve_allowance`:** afterwards, `allowance[o][sp]` is `wad` when `o` is `msg.sender` and `sp` is `guy`, and keeps its old value for every other pair; `balanceOf` doesn't change. This one rests on one assumption: reading storage back right after writing it returns what was written (`ext.get (ext.set w s) = s`).\n\nThe `Approval` event isn't covered, because the model doesn't represent events. I've recorded the property with both theorem names for the reviewer. Next is the following plan item.",
+      "result": ""
+    },
+    {
+      "id": 1793124467,
+      "kind": "review",
+      "item": 1,
+      "text": "`WETH9.approve` — WETH9 (src/WETH9.sol:49): nonpayable · writes [allowance] · guards 0 · external calls 0",
+      "state": "done",
+      "attempt": 1,
+      "notes": "I've proved `WETH9.approve` (plan item 1) in `formal/Refinement/Swarm/WETH9Approve.lean`, and `lake build Refinement.Swarm.WETH9Approve` passes with no `sorry`. No bug found: the function does what the Solidity says.\n\n- **`approve_spec`:** for any caller and any storage, the call succeeds, returns `true`, and the new storage is the old one with only `allowance[msg.sender][guy]` set to `wad`. Since it always succeeds, the function never reverts, which matches its zero guards. The proof is just unfolding the definition, so it's checked by `rfl`.\n- **`approve_allowance`:** afterwards, `allowance[o][sp]` is `wad` when `o` is `msg.sender` and `sp` is `guy`, and keeps its old value for every other pair; `balanceOf` doesn't change. This one rests on one assumption: reading storage back right after writing it returns what was written (`ext.get (ext.set w s) = s`).\n\nThe `Approval` event isn't covered, because the model doesn't represent events. I've recorded the property with both theorem names for the reviewer. Next is the following plan item.\n\nChecked by the swarm: `lake build` passes; the Proofs page counts it as proved by formal/Refinement/Swarm/WETH9Approve.lean:8 approve_spec; formal/Refinement/Swarm/WETH9Approve.lean:17 approve_allowance.",
+      "files": [
+        "formal/Refinement/Swarm/WETH9Approve.lean"
+      ],
+      "summary": "I approved plan item 1, `WETH9.approve`. Both theorems are stated about the generated def `WETH9.approve`, match what the Solidity does, and contain no `sorry`, `admit` or new axioms:\n\n- **`approve_spec`:** the call never reverts, returns `true`, and the only change is that `allowance[msg.sender][guy]` becomes `wad`. Lean checks it by unfolding the definition (`rfl`).\n- **`approve_allowance`:** afterwards that one allowance is `wad`, every other `allowance[o][sp]` keeps its value, and `balanceOf` is unchanged. It rests on one stated assumption: reading storage straight after writing it returns what was written (`ext.get (ext.set w s) = s`).\n\nThe prover's report notes were accurate. I only tightened the wording: \"no other storage field changes\" now says the contract's storage is replaced by a copy with just that one allowance changed, which is exactly what `approve_spec` states. The `Approval` event isn't covered because the model doesn't represent events; that's listed under the assumptions.\n\nI didn't find any bug in this function. Next is the following plan item.",
+      "result": "approve",
+      "property": {
+        "statement": "`WETH9.approve(guy, wad)` never reverts, for any caller, environment or storage. It always returns `true`.\n- `approve_spec`: the resulting state equals the prior state with only `allowance[msg.sender][guy]` replaced by `wad`. No other storage field changes.\n- `approve_allowance`: afterwards `allowance[o][sp]` equals `wad` when `o = msg.sender ∧ sp = guy`. Otherwise it equals the previous `allowance[o][sp]`. `balanceOf` is unchanged.",
+        "assumptions": "For `approve_allowance` only: the storage lens satisfies `ext.get (ext.set w s) = s`. Events are not modelled.",
+        "theorems": [
+          "WETH9.approve_spec",
+          "WETH9.approve_allowance"
+        ]
+      }
+    },
+    {
+      "id": 1793124468,
+      "kind": "prove",
+      "item": 2,
+      "text": "`WETH9.«»` — WETH9 (src/WETH9.sol:31): payable · writes [balanceOf] · guards 0 · external calls 0",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [
+        "formal/Refinement/Swarm/WETH9Fallback.lean"
+      ],
+      "summary": "Plan item 2 is proven: the WETH9 fallback (`WETH9.«»`) can never revert, and its only effect is to credit the ETH sent to the sender's balance. Both theorems in `formal/Refinement/Swarm/WETH9Fallback.lean` build cleanly with `lake build Refinement.Swarm.WETH9Fallback`, with no `sorry`. I've recorded the property for the report, where it now waits for the reviewer.\n\n- **`fallback_spec` (exact behaviour):** for every call environment `env` and starting state `w`, running the fallback gives `.ok ((), w')`. `w'` is `w` with one change: `balanceOf[sender]` becomes `(balanceOf[sender] + msg.value) mod 2^256`. The function has no guards, so there is no failure case to split on. The proof unfolds the fallback into `deposit` and lets `simp` reduce the steps of the monad.\n- **`fallback_frame` (nothing else changes):** after a successful call, `balanceOf[sender]` holds that sum. Every other address's balance, `allowance`, `name`, `symbol` and `decimals` are unchanged. This one assumes the storage accessor is consistent: reading back what was just written gives that value (`ext.get (ext.set w s) = s`).\n\nThe addition is unchecked, so the theorem is stated with the wrap-around modulo 2^256. It can't wrap in practice, because no account can hold anywhere near 2^256 wei. So I didn't treat it as a finding. The `Deposit` event isn't in the model, so the proof says nothing about it.\n\nNext is the plan's next item.",
+      "result": ""
+    },
+    {
+      "id": 1793124469,
+      "kind": "review",
+      "item": 2,
+      "text": "`WETH9.«»` — WETH9 (src/WETH9.sol:31): payable · writes [balanceOf] · guards 0 · external calls 0",
+      "state": "done",
+      "attempt": 1,
+      "notes": "Plan item 2 is proven: the WETH9 fallback (`WETH9.«»`) can never revert, and its only effect is to credit the ETH sent to the sender's balance. Both theorems in `formal/Refinement/Swarm/WETH9Fallback.lean` build cleanly with `lake build Refinement.Swarm.WETH9Fallback`, with no `sorry`. I've recorded the property for the report, where it now waits for the reviewer.\n\n- **`fallback_spec` (exact behaviour):** for every call environment `env` and starting state `w`, running the fallback gives `.ok ((), w')`. `w'` is `w` with one change: `balanceOf[sender]` becomes `(balanceOf[sender] + msg.value) mod 2^256`. The function has no guards, so there is no failure case to split on. The proof unfolds the fallback into `deposit` and lets `simp` reduce the steps of the monad.\n- **`fallback_frame` (nothing else changes):** after a successful call, `balanceOf[sender]` holds that sum. Every other address's balance, `allowance`, `name`, `symbol` and `decimals` are unchanged. This one assumes the storage accessor is consistent: reading back what was just written gives that value (`ext.get (ext.set w s) = s`).\n\nThe addition is unchecked, so the theorem is stated with the wrap-around modulo 2^256. It can't wrap in practice, because no account can hold anywhere near 2^256 wei. So I didn't treat it as a finding. The `Deposit` event isn't in the model, so the proof says nothing about it.\n\nNext is the plan's next item.\n\nChecked by the swarm: `lake build` passes; the Proofs page counts it as proved by formal/Refinement/Swarm/WETH9Fallback.lean:7 fallback_spec; formal/Refinement/Swarm/WETH9Fallback.lean:18 fallback_frame.",
+      "files": [
+        "formal/Refinement/Swarm/WETH9Fallback.lean"
+      ],
+      "summary": "I approved plan item 2, the WETH9 fallback (`WETH9.«»`), and its report notes went into the audit file as the prover wrote them.\n\n- **The spec is right:** `fallback_spec` is stated about the generated def, not a rewrite of the Solidity. For every environment and starting state, the fallback returns successfully. The new state is the old one with one change: `balanceOf[msg.sender]` becomes `(balanceOf[msg.sender] + msg.value) mod 2^256`. That matches the unchecked `+=` in `deposit`.\n- **The frame proof is sound:** `fallback_frame` follows from the spec. It shows every other address's balance, plus `allowance`, `name`, `symbol` and `decimals`, are unchanged. It assumes that reading the state back after a write returns what was written (`ext.get (ext.set w s) = s`), and the notes say so.\n- **The proof file is clean:** it has no `sorry`, `admit`, `native_decide` or new axioms. I didn't rebuild it myself; the swarm reports that `lake build` passes.\n- **No bug:** the addition could only wrap around if a balance got near 2^256 wei, which no account can.\n- **Not covered:** the `Deposit` event isn't in the model, so the proof says nothing about it. The notes state this.\n\nNext is the plan's next item.",
+      "result": "approve",
+      "property": {
+        "statement": "- `fallback_spec`: `WETH9.«»` (the payable fallback) never reverts. For every environment and world `w`, it returns `.ok ((), w')`, where `w'` is `w` with `balanceOf[msg.sender]` set to `(balanceOf[msg.sender] + msg.value) mod 2^256` (unchecked, as in the source; the model adds no checked-overflow guard). All other storage is unchanged. It makes no external calls and returns nothing.\n- `fallback_frame`: on success, `balanceOf[msg.sender]` holds the wrapped sum. `balanceOf[a]` is unchanged for every `a ≠ msg.sender`, and `allowance`, `name`, `symbol` and `decimals` are unchanged.",
+        "theorems": [
+          "WETH9.fallback_spec",
+          "WETH9.fallback_frame"
+        ],
+        "assumptions": "`fallback_frame` assumes the storage lens is lawful: `ext.get (ext.set w s) = s`. `fallback_spec` assumes nothing. The `Deposit` event is not modelled."
+      }
+    },
+    {
+      "id": 1793124470,
+      "kind": "prove",
+      "item": 3,
+      "text": "`WETH9.deposit` — WETH9 (src/WETH9.sol:34): payable · writes [balanceOf] · guards 0 · external calls 0",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [
+        "formal/Refinement/Swarm/WETH9Deposit.lean"
+      ],
+      "summary": "I proved `WETH9.deposit` (plan item 3) in `formal/Refinement/Swarm/WETH9Deposit.lean`, and `lake build Refinement.Swarm.WETH9Deposit` succeeds.\n\n- **`deposit_spec` (what the call does):** `deposit` never reverts. It always succeeds, and the only change is `balanceOf[msg.sender] := (balanceOf[msg.sender] + msg.value) mod 2^256`. The proof unfolds the def and simplifies the monad steps, the same way the existing `fallback_spec` does.\n- **`deposit_frame` (what it leaves alone):** on success, `balanceOf[msg.sender]` holds that sum, and every other `balanceOf` entry plus `allowance`, `name`, `symbol` and `decimals` stay the same. This follows from `deposit_spec` and one assumption: reading back a storage value you just wrote gives that value. Point updates (`upd`) leave every other address unchanged.\n\nThe addition is unchecked, so in theory it could wrap past 2^256. That can't happen in practice: it would need more ETH than exists, so I'm not treating it as a bug. The `Deposit` event isn't part of the model, so the proof says nothing about it.\n\nI've recorded both theorems for the report. Next, the reviewer checks them.",
+      "result": ""
+    },
+    {
+      "id": 1793124471,
+      "kind": "review",
+      "item": 3,
+      "text": "`WETH9.deposit` — WETH9 (src/WETH9.sol:34): payable · writes [balanceOf] · guards 0 · external calls 0",
+      "state": "done",
+      "attempt": 1,
+      "notes": "I proved `WETH9.deposit` (plan item 3) in `formal/Refinement/Swarm/WETH9Deposit.lean`, and `lake build Refinement.Swarm.WETH9Deposit` succeeds.\n\n- **`deposit_spec` (what the call does):** `deposit` never reverts. It always succeeds, and the only change is `balanceOf[msg.sender] := (balanceOf[msg.sender] + msg.value) mod 2^256`. The proof unfolds the def and simplifies the monad steps, the same way the existing `fallback_spec` does.\n- **`deposit_frame` (what it leaves alone):** on success, `balanceOf[msg.sender]` holds that sum, and every other `balanceOf` entry plus `allowance`, `name`, `symbol` and `decimals` stay the same. This follows from `deposit_spec` and one assumption: reading back a storage value you just wrote gives that value. Point updates (`upd`) leave every other address unchanged.\n\nThe addition is unchecked, so in theory it could wrap past 2^256. That can't happen in practice: it would need more ETH than exists, so I'm not treating it as a bug. The `Deposit` event isn't part of the model, so the proof says nothing about it.\n\nI've recorded both theorems for the report. Next, the reviewer checks them.\n\nChecked by the swarm: `lake build` passes; the Proofs page counts it as proved by formal/Refinement/Swarm/WETH9Deposit.lean:7 deposit_spec; formal/Refinement/Swarm/WETH9Deposit.lean:18 deposit_frame; formal/Refinement/Swarm/WETH9Fallback.lean:7 fallback_spec.",
+      "files": [
+        "formal/Refinement/Swarm/WETH9Deposit.lean"
+      ],
+      "summary": "I approved plan item 3, `WETH9.deposit`, and recorded my verdict.\n\n- **`deposit_spec`** is stated about the generated def itself and matches the Solidity. `deposit` never reverts. Its only write is `balanceOf[msg.sender] += msg.value`, unchecked, so it wraps mod 2^256.\n- **`deposit_frame`** shows that on success no other storage field changes: the other `balanceOf` entries, `allowance`, `name`, `symbol` and `decimals`. It relies on one assumption, that reading back a storage value just written gives that value.\n- **The proof file is clean:** no `sorry`, `admit`, `native_decide` or new axioms. I checked it by reading the file; the build itself is the swarm's earlier `lake build` pass.\n\nI didn't find a bug. The addition could only wrap with more than 2^256 wei, which can't exist.\n\nFor the report, I rewrote the statement in report style. I also added to the assumptions that the model doesn't include the `Deposit` event or the contract's ETH balance, so the theorems say nothing about either.\n\nNext is the next item on the plan.",
+      "result": "approve",
+      "property": {
+        "statement": "- `deposit_spec`: `WETH9.deposit` never reverts. For any caller and `msg.value`, it ends in the state where `balanceOf[msg.sender]` is replaced by `balanceOf[msg.sender] + msg.value` mod 2^256 (unchecked `addw 256`), and it returns `()`.\n- `deposit_frame`: on success, `balanceOf[msg.sender]` holds that sum. Every other `balanceOf` entry, `allowance`, `name`, `symbol` and `decimals` are unchanged.",
+        "theorems": [
+          "WETH9.deposit_spec",
+          "WETH9.deposit_frame"
+        ],
+        "assumptions": "The frame theorem assumes the storage lens law `ext.get (ext.set w s) = s`. The emitted `Deposit` event is not modelled."
+      }
+    },
+    {
+      "id": 1793124472,
+      "kind": "prove",
+      "item": 4,
+      "text": "`WETH9.withdraw` — WETH9 (src/WETH9.sol:38): nonpayable · writes [balanceOf] · guards 1 · external calls 1",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [
+        "formal/Refinement/Swarm/WETH9Withdraw.lean"
+      ],
+      "summary": "I proved plan item 4, `WETH9.withdraw`. The proof is in `formal/Refinement/Swarm/WETH9Withdraw.lean`, and `lake build Refinement.Swarm.WETH9Withdraw` builds it cleanly with no `sorry`. I found no bug.\n\n- **`withdraw_reverts` (the guard):** if the caller's balance is less than `wad`, the function reverts with `\"require\"`. Once the monad is unfolded the guard is a plain `if`, and its first branch settles this case.\n- **`withdraw_spec` (what it writes and calls):** if the balance covers `wad`, the function only changes the caller's balance, setting it to `subw 256 bal wad`. It then makes exactly one call: `ext.lowCall` to `msg.sender` with value `wad` and empty calldata. That call runs after the balance is lowered, so the order is checks-effects-interactions. The function succeeds exactly when the call returns true; it reverts with `\"transfer\"` if the call returns false and passes on any revert from the call. The proof splits on the three ways the call can end: it reverts, it returns false, or it returns true.\n- **`withdraw_sub_exact` (the arithmetic):** the unchecked subtraction never wraps when the guard holds and the stored balance is below 2^256; it equals ordinary `bal - wad`. This is modular arithmetic, `(bal − wad + 2^256) mod 2^256 = bal − wad`.\n\nThe proof assumes nothing about what the external call does, so it holds even if the call re-enters the contract. The last theorem assumes the stored balance fits in a uint256. I recorded these notes for the report with `record_property`, and the reviewer still has to check them against the Solidity. The other WETH9 functions in the plan are next.",
+      "result": ""
+    },
+    {
+      "id": 1793124473,
+      "kind": "review",
+      "item": 4,
+      "text": "`WETH9.withdraw` — WETH9 (src/WETH9.sol:38): nonpayable · writes [balanceOf] · guards 1 · external calls 1",
+      "state": "done",
+      "attempt": 1,
+      "notes": "I proved plan item 4, `WETH9.withdraw`. The proof is in `formal/Refinement/Swarm/WETH9Withdraw.lean`, and `lake build Refinement.Swarm.WETH9Withdraw` builds it cleanly with no `sorry`. I found no bug.\n\n- **`withdraw_reverts` (the guard):** if the caller's balance is less than `wad`, the function reverts with `\"require\"`. Once the monad is unfolded the guard is a plain `if`, and its first branch settles this case.\n- **`withdraw_spec` (what it writes and calls):** if the balance covers `wad`, the function only changes the caller's balance, setting it to `subw 256 bal wad`. It then makes exactly one call: `ext.lowCall` to `msg.sender` with value `wad` and empty calldata. That call runs after the balance is lowered, so the order is checks-effects-interactions. The function succeeds exactly when the call returns true; it reverts with `\"transfer\"` if the call returns false and passes on any revert from the call. The proof splits on the three ways the call can end: it reverts, it returns false, or it returns true.\n- **`withdraw_sub_exact` (the arithmetic):** the unchecked subtraction never wraps when the guard holds and the stored balance is below 2^256; it equals ordinary `bal - wad`. This is modular arithmetic, `(bal − wad + 2^256) mod 2^256 = bal − wad`.\n\nThe proof assumes nothing about what the external call does, so it holds even if the call re-enters the contract. The last theorem assumes the stored balance fits in a uint256. I recorded these notes for the report with `record_property`, and the reviewer still has to check them against the Solidity. The other WETH9 functions in the plan are next.\n\nChecked by the swarm: `lake build` passes; the Proofs page counts it as proved by formal/Refinement/Swarm/WETH9Withdraw.lean:10 withdraw_reverts; formal/Refinement/Swarm/WETH9Withdraw.lean:23 withdraw_spec.",
+      "files": [
+        "formal/Refinement/Swarm/WETH9Withdraw.lean"
+      ],
+      "summary": "I approved plan item 4, `WETH9.withdraw`. The prover's notes went into the audit file unchanged.\n\n- **Guard:** `withdraw_reverts` proves the function reverts with `\"require\"` whenever the caller's balance is less than `wad`.\n- **Success path:** `withdraw_spec` proves that when the balance covers `wad`, the function changes only the caller's balance. It then makes exactly one call to `msg.sender` with value `wad`, after the balance is lowered. It succeeds if that call returns true, reverts with `\"transfer\"` if it returns false, and passes on any revert from the call. Nothing is assumed about the call, so this holds even if the call re-enters the contract.\n- **Arithmetic:** `withdraw_sub_exact` proves the unchecked subtraction never wraps, given the guard and a balance below 2^256. It is a general fact about the subtraction rather than a theorem that names `withdraw`, but it applies directly to it.\n\nBoth theorems about the function are stated on the generated model, not a restatement of the Solidity. The swarm's `lake build` passed, and the file has no `sorry`, `admit` or new axioms. The other WETH9 functions in the plan are next.",
+      "result": "approve",
+      "property": {
+        "statement": "- `withdraw_reverts`: `WETH9.withdraw ext wad` reverts with `\"require\"` whenever `balanceOf[msg.sender] < wad`.\n- `withdraw_spec`: when `wad ≤ balanceOf[msg.sender]`, `WETH9.withdraw` first writes only `balanceOf[msg.sender] := subw 256 (balanceOf[msg.sender]) wad` (all other storage fields and keys untouched), then makes exactly one low-level call to `msg.sender` with value `wad` and empty calldata, on the already-updated world (checks-effects-interactions order). The function returns `()` with the call's resulting world iff the call reports success; it reverts with `\"transfer\"` if the call returns false and propagates any revert of the call.\n- `withdraw_sub_exact`: under the guard and `balanceOf[msg.sender] < 2^256`, the unchecked subtraction does not wrap: `subw 256 bal wad = bal - wad`.",
+        "assumptions": "The external call is modelled by the opaque `ext.lowCall`; nothing is assumed about its behaviour (it may re-enter and change state arbitrarily). `withdraw_sub_exact` assumes the stored balance is a uint256 value (< 2^256).",
+        "theorems": [
+          "WETH9.withdraw_reverts",
+          "WETH9.withdraw_spec",
+          "WETH9.withdraw_sub_exact"
+        ]
+      }
+    },
+    {
+      "id": 1793124474,
+      "kind": "prove",
+      "item": 5,
+      "text": "`WETH9.transfer` — WETH9 (src/WETH9.sol:55): nonpayable · writes [balanceOf, allowance] · guards 2 · external calls 0",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [
+        "formal/Refinement/Swarm/WETH9Transfer.lean"
+      ],
+      "summary": "I proved plan item 5 (`WETH9.transfer`). The proof is in `formal/Refinement/Swarm/WETH9Transfer.lean` and `lake build Refinement.Swarm.WETH9Transfer` passes.\n\n`transfer` just calls `transferFrom` with `src = msg.sender`. That makes the allowance check `src != msg.sender` false, so the allowance branch never runs and only one of the two guards applies. Each theorem splits on that guard (`wad ≤ balanceOf[sender]`) and works through the read/state/revert steps with `simp`.\n\n- **Reverts:** `transfer_reverts` shows the call reverts with `require` exactly when `balanceOf[msg.sender] < wad`. It needs no assumptions.\n- **Succeeds:** `transfer_succeeds` shows that otherwise it returns `true` and changes only `balanceOf`: the sender is debited, then `dst` is credited. If `dst` is the sender, their balance ends up unchanged. `allowance` and the other fields stay the same, and there are no external calls.\n\n`transfer_succeeds` assumes the model's storage get/set behave consistently: reading back what was just written gives that value, and a second write replaces the first. This is a modelling assumption, not something proven about the contract.\n\nThe credit to `dst` wraps at 2^256 in the model. That can't happen in practice because total WETH is limited by the ETH deposited, but the proof doesn't cover that limit.\n\nThe project had no ready-made simplification lemmas for its monad, so I listed the definitions to unfold directly in each proof.\n\nI found no bug. I've recorded the property for the report and it's now waiting on the reviewer.",
+      "result": "changes"
+    },
+    {
+      "id": 1793124475,
+      "kind": "prove",
+      "item": 5,
+      "text": "`WETH9.transfer` — WETH9 (src/WETH9.sol:55): nonpayable · writes [balanceOf, allowance] · guards 2 · external calls 0",
+      "state": "done",
+      "attempt": 2,
+      "notes": "The swarm's check failed:\n`lake build` passes, but no theorem without sorry names `WETH9.transfer`, so the Proofs page still shows WETH9.transfer as not proved. State the theorem about `WETH9.transfer` itself, spelled fully qualified.",
+      "files": [
+        "formal/Refinement/Swarm/WETH9Transfer.lean"
+      ],
+      "summary": "`WETH9.transfer` is now proved, and both theorems name it as `WETH9.transfer`. The proofs were already correct last time. The check failed only because they spelled the name `WETH9.WETH9.transfer`, which the Proofs page doesn't match. `lake build Refinement.Swarm.WETH9Transfer` passes.\n\nWhat the two theorems say:\n\n- **When it reverts:** if `balanceOf[sender] < wad`, the call reverts with `require`.\n- **When it succeeds:** otherwise it returns `true`. It first takes `wad` from the sender's balance, then adds `wad` to the receiver's balance from the already-reduced map, with both sums wrapping at 2^256. So sending to yourself leaves your balance unchanged.\n- **`allowance` is never written:** `transfer` calls `transferFrom` with `src = msg.sender`, which skips the allowance branch.\n\nSo the slice's second guard (`allowance[src][msg.sender] >= wad`) is never checked on this path. The only way `transfer` can revert is a balance below `wad`.\n\nThe success proof assumes the storage accessor `ext` behaves like ordinary storage: reading back a write returns what was written, and a second write replaces the first.\n\nI've recorded these notes for the reviewer.",
+      "result": ""
+    },
+    {
+      "id": 1793124476,
+      "kind": "review",
+      "item": 5,
+      "text": "`WETH9.transfer` — WETH9 (src/WETH9.sol:55): nonpayable · writes [balanceOf, allowance] · guards 2 · external calls 0",
+      "state": "done",
+      "attempt": 2,
+      "notes": "`WETH9.transfer` is now proved, and both theorems name it as `WETH9.transfer`. The proofs were already correct last time. The check failed only because they spelled the name `WETH9.WETH9.transfer`, which the Proofs page doesn't match. `lake build Refinement.Swarm.WETH9Transfer` passes.\n\nWhat the two theorems say:\n\n- **When it reverts:** if `balanceOf[sender] < wad`, the call reverts with `require`.\n- **When it succeeds:** otherwise it returns `true`. It first takes `wad` from the sender's balance, then adds `wad` to the receiver's balance from the already-reduced map, with both sums wrapping at 2^256. So sending to yourself leaves your balance unchanged.\n- **`allowance` is never written:** `transfer` calls `transferFrom` with `src = msg.sender`, which skips the allowance branch.\n\nSo the slice's second guard (`allowance[src][msg.sender] >= wad`) is never checked on this path. The only way `transfer` can revert is a balance below `wad`.\n\nThe success proof assumes the storage accessor `ext` behaves like ordinary storage: reading back a write returns what was written, and a second write replaces the first.\n\nI've recorded these notes for the reviewer.\n\nChecked by the swarm: `lake build` passes; the Proofs page counts it as proved by formal/Refinement/Swarm/WETH9Transfer.lean:10 transfer_reverts; formal/Refinement/Swarm/WETH9Transfer.lean:21 transfer_succeeds.",
+      "files": [
+        "formal/Refinement/Swarm/WETH9Transfer.lean"
+      ],
+      "summary": "I approved plan item 5. Both theorems say what the Solidity does, and they prove facts about the generated def `WETH9.transfer` rather than a hand-written copy of it.\n\n- **`transfer_reverts`:** the call reverts with `require` whenever the sender's `balanceOf` is below `wad`.\n- **`transfer_succeeds`:** otherwise it returns `true`. The stored state becomes the old state with `balanceOf[msg.sender]` reduced by `wad`, then `balanceOf[dst]` increased by `wad` in the already-reduced map, both sums wrapping at 2^256. Nothing else changes, so `allowance` is untouched.\n\nThe proof file has no `sorry`, `admit` or new axioms. I didn't rebuild it myself; the swarm reports that `lake build` passes. The only things taken as given are the two storage hypotheses (reading back a write returns it; a second write replaces the first), and they appear in the report's assumptions. I accepted the prover's report notes unchanged. I saw no bug in the contract on this path. Next is the next plan item.",
+      "result": "approve",
+      "property": {
+        "statement": "- `transfer_reverts`: `WETH9.transfer dst wad` reverts with `require` whenever `balanceOf[msg.sender] < wad`.\n- `transfer_succeeds`: when `wad ≤ balanceOf[msg.sender]`, `WETH9.transfer` returns `true`. Its only storage change is to `balanceOf`: first `balanceOf[msg.sender]` is decreased by `wad`, then `balanceOf[dst]` is increased by `wad`, both modulo 2^256 and with the second reading the already-debited map (so a self-transfer leaves the balance unchanged). `allowance` is never touched, because `src = msg.sender` skips the allowance branch.\nTaken together, the two theorems show that the balance guard is the only reason `transfer` can revert.",
+        "assumptions": "The storage accessor `ext` is a lawful lens: `get (set w s) = s` and `set (set w s) t = set w t`.",
+        "theorems": [
+          "WETH9.Swarm.transfer_reverts",
+          "WETH9.Swarm.transfer_succeeds"
+        ]
+      }
+    },
+    {
+      "id": 1793124477,
+      "kind": "prove",
+      "item": 6,
+      "text": "`WETH9.transferFrom` — WETH9 (src/WETH9.sol:59): nonpayable · writes [balanceOf, allowance] · guards 2 · external calls 0",
+      "state": "running",
+      "attempt": 1,
+      "notes": "",
+      "files": [
+        "formal/Refinement/Swarm/WETH9TransferFrom.lean"
+      ],
+      "summary": "",
+      "result": ""
+    }
+  ],
+  "spent": 0.0
+}

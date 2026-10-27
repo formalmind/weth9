@@ -1,0 +1,134 @@
+{
+  "version": 1,
+  "reviews": {
+    "WETH9.approve": {
+      "verdict": "approve",
+      "at": 1793124510562,
+      "defHash": "a7fad5d2b49f17e1",
+      "theorems": {
+        "WETH9.approve_allowance": "7428e78306fd5bce",
+        "WETH9.approve_spec": "2820eaa79c21e67f"
+      },
+      "notes": "I approved plan item 1, `WETH9.approve`. Both theorems are stated about the generated def `WETH9.approve`, match what the Solidity does, and contain no `sorry`, `admit` or new axioms:\n\n- **`approve_spec`:** the call never reverts, returns `true`, and the only change is that `allowance[msg.sender][guy]` becomes `wad`. Lean checks it by unfolding the definition (`rfl`).\n- **`approve_allowance`:** afterwards that one allowance is `wad`, every other `allowance[o][sp]` keeps its value, and `balanceOf` is unchanged. It rests on one stated assumption: reading storage straight after writing it returns what was written (`ext.get (ext.set w s) = s`).\n\nThe prover's report notes were accurate. I only tightened the wording: \"no other storage field changes\" now says the contract's storage is replaced by a copy with just that one allowance changed, which is exactly what `approve_spec` states. The `Approval` event isn't covered because the model doesn't represent events; that's listed under the assumptions.\n\nI didn't find any bug in this function. Next is the following plan item."
+    },
+    "WETH9.«»": {
+      "verdict": "approve",
+      "at": 1793124582390,
+      "defHash": "4dba2b1b3742a06b",
+      "theorems": {
+        "WETH9.fallback_frame": "d448594f41afa747",
+        "WETH9.fallback_spec": "09a7a93e028b68bf"
+      },
+      "notes": "I approved plan item 2, the WETH9 fallback (`WETH9.«»`), and its report notes went into the audit file as the prover wrote them.\n\n- **The spec is right:** `fallback_spec` is stated about the generated def, not a rewrite of the Solidity. For every environment and starting state, the fallback returns successfully. The new state is the old one with one change: `balanceOf[msg.sender]` becomes `(balanceOf[msg.sender] + msg.value) mod 2^256`. That matches the unchecked `+=` in `deposit`.\n- **The frame proof is sound:** `fallback_frame` follows from the spec. It shows every other address's balance, plus `allowance`, `name`, `symbol` and `decimals`, are unchanged. It assumes that reading the state back after a write returns what was written (`ext.get (ext.set w s) = s`), and the notes say so.\n- **The proof file is clean:** it has no `sorry`, `admit`, `native_decide` or new axioms. I didn't rebuild it myself; the swarm reports that `lake build` passes.\n- **No bug:** the addition could only wrap around if a balance got near 2^256 wei, which no account can.\n- **Not covered:** the `Deposit` event isn't in the model, so the proof says nothing about it. The notes state this.\n\nNext is the plan's next item."
+    },
+    "WETH9.deposit": {
+      "verdict": "approve",
+      "at": 1793124613407,
+      "defHash": "8b328c5b949de6ec",
+      "theorems": {
+        "WETH9.deposit_frame": "076e8a0414bb5fa5",
+        "WETH9.deposit_spec": "eb68bdf9edc07c5e",
+        "WETH9.fallback_spec": "09a7a93e028b68bf"
+      },
+      "notes": "I approved plan item 3, `WETH9.deposit`, and recorded my verdict.\n\n- **`deposit_spec`** is stated about the generated def itself and matches the Solidity. `deposit` never reverts. Its only write is `balanceOf[msg.sender] += msg.value`, unchecked, so it wraps mod 2^256.\n- **`deposit_frame`** shows that on success no other storage field changes: the other `balanceOf` entries, `allowance`, `name`, `symbol` and `decimals`. It relies on one assumption, that reading back a storage value just written gives that value.\n- **The proof file is clean:** no `sorry`, `admit`, `native_decide` or new axioms. I checked it by reading the file; the build itself is the swarm's earlier `lake build` pass.\n\nI didn't find a bug. The addition could only wrap with more than 2^256 wei, which can't exist.\n\nFor the report, I rewrote the statement in report style. I also added to the assumptions that the model doesn't include the `Deposit` event or the contract's ETH balance, so the theorems say nothing about either.\n\nNext is the next item on the plan."
+    },
+    "WETH9.withdraw": {
+      "verdict": "approve",
+      "at": 1793124697391,
+      "defHash": "ec473428af7493a4",
+      "theorems": {
+        "WETH9.withdraw_reverts": "141a46f71d051922",
+        "WETH9.withdraw_spec": "f415606c711a396c"
+      },
+      "notes": "I approved plan item 4, `WETH9.withdraw`. The prover's notes went into the audit file unchanged.\n\n- **Guard:** `withdraw_reverts` proves the function reverts with `\"require\"` whenever the caller's balance is less than `wad`.\n- **Success path:** `withdraw_spec` proves that when the balance covers `wad`, the function changes only the caller's balance. It then makes exactly one call to `msg.sender` with value `wad`, after the balance is lowered. It succeeds if that call returns true, reverts with `\"transfer\"` if it returns false, and passes on any revert from the call. Nothing is assumed about the call, so this holds even if the call re-enters the contract.\n- **Arithmetic:** `withdraw_sub_exact` proves the unchecked subtraction never wraps, given the guard and a balance below 2^256. It is a general fact about the subtraction rather than a theorem that names `withdraw`, but it applies directly to it.\n\nBoth theorems about the function are stated on the generated model, not a restatement of the Solidity. The swarm's `lake build` passed, and the file has no `sorry`, `admit` or new axioms. The other WETH9 functions in the plan are next."
+    },
+    "WETH9.transfer": {
+      "verdict": "approve",
+      "at": 1793124805334,
+      "defHash": "f48222f6850f1fed",
+      "theorems": {
+        "WETH9.Swarm.transfer_reverts": "bd5fc3bc6d4ef635",
+        "WETH9.Swarm.transfer_succeeds": "31873f8e29869295"
+      },
+      "notes": "I approved plan item 5. Both theorems say what the Solidity does, and they prove facts about the generated def `WETH9.transfer` rather than a hand-written copy of it.\n\n- **`transfer_reverts`:** the call reverts with `require` whenever the sender's `balanceOf` is below `wad`.\n- **`transfer_succeeds`:** otherwise it returns `true`. The stored state becomes the old state with `balanceOf[msg.sender]` reduced by `wad`, then `balanceOf[dst]` increased by `wad` in the already-reduced map, both sums wrapping at 2^256. Nothing else changes, so `allowance` is untouched.\n\nThe proof file has no `sorry`, `admit` or new axioms. I didn't rebuild it myself; the swarm reports that `lake build` passes. The only things taken as given are the two storage hypotheses (reading back a write returns it; a second write replaces the first), and they appear in the report's assumptions. I accepted the prover's report notes unchanged. I saw no bug in the contract on this path. Next is the next plan item."
+    }
+  },
+  "checked": {
+    "at": 1793124807269,
+    "sources": "3:49725e60cf5ea8f8",
+    "results": {
+      "WETH9.Swarm.transfer_reverts": {
+        "ok": true,
+        "ty": "@WETH9.Swarm.transfer_reverts : ∀ {σ : Type} (ext : WETH9.Ext σ) (dst wad : Nat) (e : FormalAst.Env) (w : σ),\n  (ext.get w).balanceOf e.sender < wad →\n    (ReaderT.run (WETH9.WETH9.transfer ext dst wad) e).run w = Except.error { reason := \"require\" }",
+        "axioms": [
+          "propext",
+          "Quot.sound"
+        ]
+      },
+      "WETH9.Swarm.transfer_succeeds": {
+        "ok": true,
+        "ty": "@WETH9.Swarm.transfer_succeeds : ∀ {σ : Type} (ext : WETH9.Ext σ) (dst wad : Nat) (e : FormalAst.Env) (w : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    (∀ (w : σ) (s t : WETH9.State), ext.set (ext.set w s) t = ext.set w t) →\n      wad ≤ (ext.get w).balanceOf e.sender →\n        (ReaderT.run (WETH9.WETH9.transfer ext dst wad) e).run w =\n          Except.ok\n            (true,\n              ext.set w\n                (have s := ext.get w;\n                have b1 := FormalAst.upd s.balanceOf e.sender (FormalAst.subw 256 (s.balanceOf e.sender) wad);\n                { name := s.name, symbol := s.symbol, decimals := s.decimals,\n                  balanceOf := FormalAst.upd b1 dst (FormalAst.addw 256 (b1 dst) wad), allowance := s.allowance }))",
+        "axioms": [
+          "propext",
+          "Quot.sound"
+        ]
+      },
+      "WETH9.approve_allowance": {
+        "ok": true,
+        "ty": "@WETH9.approve_allowance : ∀ {σ : Type} (ext : WETH9.Ext σ) (guy wad : Nat) (env : FormalAst.Env) (w : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    ∀ (o sp : Nat),\n      ∃ w',\n        (ReaderT.run (WETH9.WETH9.approve ext guy wad) env).run w = Except.ok (true, w') ∧\n          ((ext.get w').allowance o sp = if o = env.sender ∧ sp = guy then wad else (ext.get w).allowance o sp) ∧\n            (ext.get w').balanceOf = (ext.get w).balanceOf",
+        "axioms": [
+          "propext"
+        ]
+      },
+      "WETH9.approve_spec": {
+        "ok": true,
+        "ty": "@WETH9.approve_spec : ∀ {σ : Type} (ext : WETH9.Ext σ) (guy wad : Nat) (env : FormalAst.Env) (w : σ),\n  (ReaderT.run (WETH9.WETH9.approve ext guy wad) env).run w =\n    Except.ok\n      (true,\n        ext.set w\n          (have __src := ext.get w;\n          { name := __src.name, symbol := __src.symbol, decimals := __src.decimals, balanceOf := __src.balanceOf,\n            allowance :=\n              FormalAst.upd (ext.get w).allowance env.sender\n                (FormalAst.upd ((ext.get w).allowance env.sender) guy wad) }))",
+        "axioms": []
+      },
+      "WETH9.deposit_frame": {
+        "ok": true,
+        "ty": "@WETH9.deposit_frame : ∀ {σ : Type} (ext : WETH9.Ext σ) (env : FormalAst.Env) (w w' : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    (ReaderT.run (WETH9.WETH9.deposit ext) env).run w = Except.ok ((), w') →\n      (ext.get w').balanceOf env.sender = FormalAst.addw 256 ((ext.get w).balanceOf env.sender) env.value ∧\n        (∀ (a : Nat), a ≠ env.sender → (ext.get w').balanceOf a = (ext.get w).balanceOf a) ∧\n          (ext.get w').allowance = (ext.get w).allowance ∧\n            (ext.get w').name = (ext.get w).name ∧\n              (ext.get w').symbol = (ext.get w).symbol ∧ (ext.get w').decimals = (ext.get w).decimals",
+        "axioms": [
+          "propext"
+        ]
+      },
+      "WETH9.deposit_spec": {
+        "ok": true,
+        "ty": "@WETH9.deposit_spec : ∀ {σ : Type} (ext : WETH9.Ext σ) (env : FormalAst.Env) (w : σ),\n  (ReaderT.run (WETH9.WETH9.deposit ext) env).run w =\n    Except.ok\n      ((),\n        ext.set w\n          (have __src := ext.get w;\n          { name := __src.name, symbol := __src.symbol, decimals := __src.decimals,\n            balanceOf :=\n              FormalAst.upd (ext.get w).balanceOf env.sender\n                (FormalAst.addw 256 ((ext.get w).balanceOf env.sender) env.value),\n            allowance := __src.allowance }))",
+        "axioms": [
+          "propext"
+        ]
+      },
+      "WETH9.fallback_frame": {
+        "ok": true,
+        "ty": "@WETH9.fallback_frame : ∀ {σ : Type} (ext : WETH9.Ext σ) (env : FormalAst.Env) (w w' : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    (ReaderT.run (WETH9.WETH9.«» ext) env).run w = Except.ok ((), w') →\n      (ext.get w').balanceOf env.sender = FormalAst.addw 256 ((ext.get w).balanceOf env.sender) env.value ∧\n        (∀ (a : Nat), a ≠ env.sender → (ext.get w').balanceOf a = (ext.get w).balanceOf a) ∧\n          (ext.get w').allowance = (ext.get w).allowance ∧\n            (ext.get w').name = (ext.get w).name ∧\n              (ext.get w').symbol = (ext.get w).symbol ∧ (ext.get w').decimals = (ext.get w).decimals",
+        "axioms": [
+          "propext"
+        ]
+      },
+      "WETH9.fallback_spec": {
+        "ok": true,
+        "ty": "@WETH9.fallback_spec : ∀ {σ : Type} (ext : WETH9.Ext σ) (env : FormalAst.Env) (w : σ),\n  (ReaderT.run (WETH9.WETH9.«» ext) env).run w =\n    Except.ok\n      ((),\n        ext.set w\n          (have __src := ext.get w;\n          { name := __src.name, symbol := __src.symbol, decimals := __src.decimals,\n            balanceOf :=\n              FormalAst.upd (ext.get w).balanceOf env.sender\n                (FormalAst.addw 256 ((ext.get w).balanceOf env.sender) env.value),\n            allowance := __src.allowance }))",
+        "axioms": [
+          "propext"
+        ]
+      },
+      "WETH9.withdraw_reverts": {
+        "ok": true,
+        "ty": "@WETH9.withdraw_reverts : ∀ {σ : Type} (ext : WETH9.Ext σ) (wad : Nat) (env : FormalAst.Env) (w : σ),\n  (ext.get w).balanceOf env.sender < wad →\n    (ReaderT.run (WETH9.WETH9.withdraw ext wad) env).run w = Except.error { reason := \"require\" }",
+        "axioms": [
+          "propext",
+          "Quot.sound"
+        ]
+      },
+      "WETH9.withdraw_spec": {
+        "ok": true,
+        "ty": "@WETH9.withdraw_spec : ∀ {σ : Type} (ext : WETH9.Ext σ) (wad : Nat) (env : FormalAst.Env) (w : σ),\n  wad ≤ (ext.get w).balanceOf env.sender →\n    (ReaderT.run (WETH9.WETH9.withdraw ext wad) env).run w =\n      match\n        (ReaderT.run (ext.lowCall env.sender wad []) env).run\n          (ext.set w\n            (have __src := ext.get w;\n            { name := __src.name, symbol := __src.symbol, decimals := __src.decimals,\n              balanceOf :=\n                FormalAst.upd (ext.get w).balanceOf env.sender\n                  (FormalAst.subw 256 ((ext.get w).balanceOf env.sender) wad),\n              allowance := __src.allowance })) with\n      | Except.error e => Except.error e\n      | Except.ok (r, w2) => if r.fst = true then Except.ok ((), w2) else Except.error { reason := \"transfer\" }",
+        "axioms": [
+          "propext",
+          "Quot.sound"
+        ]
+      }
+    }
+  }
+}

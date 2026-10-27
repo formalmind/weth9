@@ -1,0 +1,127 @@
+{
+  "schema": "formalmind.audit/v1",
+  "kind": "internal",
+  "title": "",
+  "auditor": "Formal Mind",
+  "findings": [],
+  "properties": [
+    {
+      "id": "P-01",
+      "title": "WETH9.approve",
+      "status": "verified",
+      "description": "`WETH9.approve(guy, wad)` never reverts, for any caller, environment or storage, and always returns `true`.\n- `approve_spec`: the resulting state is the prior state with the contract's storage replaced by a copy in which only `allowance[msg.sender][guy]` is set to `wad`.\n- `approve_allowance`: afterwards `allowance[o][sp]` equals `wad` when `o = msg.sender` and `sp = guy`, and its previous value otherwise. `balanceOf` is unchanged.\n\n**Assumptions.** For `approve_allowance` only: the storage lens satisfies `ext.get (ext.set w s) = s`. The `Approval` event is not modelled, so it is not covered.",
+      "theorems": [
+        {
+          "name": "WETH9.approve_spec"
+        },
+        {
+          "name": "WETH9.approve_allowance"
+        }
+      ],
+      "files": [
+        "formal/Refinement/Swarm/WETH9Approve.lean"
+      ],
+      "locations": [
+        {
+          "file": "src/WETH9.sol",
+          "line": 49
+        }
+      ]
+    },
+    {
+      "id": "P-02",
+      "title": "WETH9.«»",
+      "status": "verified",
+      "description": "- `fallback_spec`: `WETH9.«»` (the payable fallback) never reverts. For every environment and world `w`, it returns `.ok ((), w')`, where `w'` is `w` with `balanceOf[msg.sender]` set to `(balanceOf[msg.sender] + msg.value) mod 2^256` (unchecked, as in the source; the model adds no checked-overflow guard). All other storage is unchanged. It makes no external calls and returns nothing.\n- `fallback_frame`: on success, `balanceOf[msg.sender]` holds the wrapped sum. `balanceOf[a]` is unchanged for every `a ≠ msg.sender`, and `allowance`, `name`, `symbol` and `decimals` are unchanged.\n\n**Assumptions.** `fallback_frame` assumes the storage lens is lawful: `ext.get (ext.set w s) = s`. `fallback_spec` assumes nothing. The `Deposit` event is not modelled.",
+      "theorems": [
+        {
+          "name": "WETH9.fallback_spec"
+        },
+        {
+          "name": "WETH9.fallback_frame"
+        }
+      ],
+      "files": [
+        "formal/Refinement/Swarm/WETH9Fallback.lean"
+      ],
+      "locations": [
+        {
+          "file": "src/WETH9.sol",
+          "line": 31
+        }
+      ]
+    },
+    {
+      "id": "P-03",
+      "title": "WETH9.deposit",
+      "status": "verified",
+      "description": "- `WETH9.deposit` never reverts: for every caller, `msg.value` and starting state, it returns `()` in the state where `balanceOf[msg.sender]` is replaced by `(balanceOf[msg.sender] + msg.value) mod 2^256` (an unchecked `addw 256`) and nothing else is written (`deposit_spec`).\n- On success, `balanceOf[msg.sender]` holds that sum. Every other `balanceOf` entry, `allowance`, `name`, `symbol` and `decimals` are unchanged (`deposit_frame`).\n\n**Assumptions.** `deposit_frame` assumes the storage lens law `ext.get (ext.set w s) = s`. The emitted `Deposit` event and the contract's ETH balance are not modelled. The addition wraps mod 2^256 as in the Solidity (a wrap would need more than 2^256 wei, which cannot exist).",
+      "theorems": [
+        {
+          "name": "WETH9.deposit_spec"
+        },
+        {
+          "name": "WETH9.deposit_frame"
+        }
+      ],
+      "files": [
+        "formal/Refinement/Swarm/WETH9Deposit.lean"
+      ],
+      "locations": [
+        {
+          "file": "src/WETH9.sol",
+          "line": 34
+        }
+      ]
+    },
+    {
+      "id": "P-04",
+      "title": "WETH9.withdraw",
+      "status": "verified",
+      "description": "- `withdraw_reverts`: `WETH9.withdraw ext wad` reverts with `\"require\"` whenever `balanceOf[msg.sender] < wad`.\n- `withdraw_spec`: when `wad ≤ balanceOf[msg.sender]`, `WETH9.withdraw` first writes only `balanceOf[msg.sender] := subw 256 (balanceOf[msg.sender]) wad` (all other storage fields and keys untouched), then makes exactly one low-level call to `msg.sender` with value `wad` and empty calldata, on the already-updated world (checks-effects-interactions order). The function returns `()` with the call's resulting world iff the call reports success; it reverts with `\"transfer\"` if the call returns false and propagates any revert of the call.\n- `withdraw_sub_exact`: under the guard and `balanceOf[msg.sender] < 2^256`, the unchecked subtraction does not wrap: `subw 256 bal wad = bal - wad`.\n\n**Assumptions.** The external call is modelled by the opaque `ext.lowCall`; nothing is assumed about its behaviour (it may re-enter and change state arbitrarily). `withdraw_sub_exact` assumes the stored balance is a uint256 value (< 2^256).",
+      "theorems": [
+        {
+          "name": "WETH9.withdraw_reverts"
+        },
+        {
+          "name": "WETH9.withdraw_spec"
+        },
+        {
+          "name": "WETH9.withdraw_sub_exact"
+        }
+      ],
+      "files": [
+        "formal/Refinement/Swarm/WETH9Withdraw.lean"
+      ],
+      "locations": [
+        {
+          "file": "src/WETH9.sol",
+          "line": 38
+        }
+      ]
+    },
+    {
+      "id": "P-05",
+      "title": "WETH9.transfer",
+      "status": "verified",
+      "description": "- `transfer_reverts`: `WETH9.transfer dst wad` reverts with `require` whenever `balanceOf[msg.sender] < wad`.\n- `transfer_succeeds`: when `wad ≤ balanceOf[msg.sender]`, `WETH9.transfer` returns `true`. Its only storage change is to `balanceOf`: first `balanceOf[msg.sender]` is decreased by `wad`, then `balanceOf[dst]` is increased by `wad`, both modulo 2^256 and with the second reading the already-debited map (so a self-transfer leaves the balance unchanged). `allowance` is never touched, because `src = msg.sender` skips the allowance branch.\nTaken together, the two theorems show that the balance guard is the only reason `transfer` can revert.\n\n**Assumptions.** The storage accessor `ext` is a lawful lens: `get (set w s) = s` and `set (set w s) t = set w t`.",
+      "theorems": [
+        {
+          "name": "WETH9.Swarm.transfer_reverts"
+        },
+        {
+          "name": "WETH9.Swarm.transfer_succeeds"
+        }
+      ],
+      "files": [
+        "formal/Refinement/Swarm/WETH9Transfer.lean"
+      ],
+      "locations": [
+        {
+          "file": "src/WETH9.sol",
+          "line": 55
+        }
+      ]
+    }
+  ]
+}
