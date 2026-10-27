@@ -1,5 +1,5 @@
 {
-  "next_id": 1793124600,
+  "next_id": 1793124601,
   "jobs": [
     {
       "id": 1793124466,
@@ -2205,6 +2205,20 @@
       "files": [],
       "summary": "",
       "result": ""
+    },
+    {
+      "id": 1793124601,
+      "kind": "review",
+      "item": 6,
+      "text": "`WETH9.transferFrom` — WETH9 (src/WETH9.sol:59): nonpayable · writes [balanceOf, allowance] · guards 2 · external calls 0",
+      "state": "done",
+      "attempt": 1,
+      "notes": "Written by an agent outside the app, through Formal Mind's MCP, in formal/Refinement/Swarm/WETH9TransferFrom.lean.\n\nRe-review: the approval lapsed because a statement prover added WETH9.Swarm.Cons.transferFrom_conserves (formal/Refinement/Swarm/WETH9Conservation.lean), which names WETH9.transferFrom. The four theorems in WETH9TransferFrom.lean (reverts on balance, reverts on allowance, succeeds spending, succeeds without spending an unlimited allowance) are unchanged; please check them and the new conservation lemma.",
+      "files": [
+        "formal/Refinement/Swarm/WETH9TransferFrom.lean"
+      ],
+      "summary": "I approved plan item 6, `WETH9.transferFrom`. Both proof files build, and neither contains `sorry`, `admit` or new axioms.\n\n**The four original theorems** (`WETH9TransferFrom.lean`, unchanged) are stated about the generated def itself, not a restatement. Together they cover every path through it:\n- **Reverts on balance:** the call reverts when `balanceOf[src] < wad`.\n- **Reverts on allowance:** someone other than `src` with a finite allowance below `wad` gets a revert.\n- **Succeeds, spending the allowance:** it returns `true` and the theorem gives the exact final storage. The allowance goes down by `wad`, `src` is debited and `dst` is credited. Because the whole state is given, nothing else can change.\n- **Succeeds without spending:** when `src` is the caller, or the allowance is the maximum value (2^256 − 1, treated as unlimited), only `balanceOf` is written.\n\n**The new conservation lemma** (`transferFrom_conserves` in `WETH9Conservation.lean`) is built from those four theorems. Whenever the call succeeds, the sum of `balanceOf` over any list of distinct accounts that includes `src` and `dst` stays the same, including when `src = dst`. It assumes `balanceOf[src] < 2^256` and that crediting `dst` doesn't overflow when `src ≠ dst`, and both assumptions are stated plainly in the lemma.\n\nThe prover gave no notes for the report, so I wrote them in the verdict:\n- **Statement:** one bullet per theorem above.\n- **Assumptions:** reading storage after a write returns what was written, and a second write replaces the first. Also the two no-overflow conditions of the conservation lemma.\n- **Theorems:** all five names.\n\nI found no bug in the contract. Next is the next item in the plan.",
+      "result": "approve"
     }
   ],
   "spent": 0.0

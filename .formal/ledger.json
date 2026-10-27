@@ -54,9 +54,18 @@
     },
     "WETH9.transferFrom": {
       "verdict": "approve",
-      "at": 1793124881590,
+      "at": 1793134396223,
       "defHash": "6cc7ae3546a03b2e",
       "theorems": {
+        "S01.WETH9_transferFrom": "ecf838cf273bb7dd",
+        "S02.WETH9_transferFrom": "72e2816373f1b4e0",
+        "S03.WETH9_transferFrom": "acfb5691f1b2980a",
+        "S04.WETH9_transferFrom": "c94b808fc0ac1993",
+        "S05.WETH9_transferFrom": "f3d31c9c8e0b7d46",
+        "S06.TransferFromAux.tf_ok": "3e25805ba53ca983",
+        "S06.WETH9_transferFrom": "5075a1d1f26799e6",
+        "S08.WETH9_transferFrom": "54f33c3839be36bf",
+        "WETH9.Swarm.Cons.transferFrom_conserves": "c3446f0de40935d6",
         "WETH9.Swarm.TF.transferFrom_reverts_allowance": "2d942f4c56875c7e",
         "WETH9.Swarm.TF.transferFrom_reverts_balance": "f607a4d68c063b82",
         "WETH9.Swarm.TF.transferFrom_succeeds_nospend": "a234d716259cefe0",
@@ -64,7 +73,7 @@
         "WETH9.Swarm.transfer_reverts": "bd5fc3bc6d4ef635",
         "WETH9.Swarm.transfer_succeeds": "31873f8e29869295"
       },
-      "notes": "I approved plan item 6, `WETH9.transferFrom`. I didn't re-run `lake build` myself; the swarm's build passed, and I read the four theorems against the generated def. They match it exactly:\n- **Two revert cases:** low balance, and a low allowance when the caller isn't `src` and the allowance isn't unlimited.\n- **Two success cases:** one that spends the allowance and one that doesn't. Each states the exact resulting state.\n\nTogether the four cases cover every possible input. The proofs contain no `sorry`, `admit` or new axioms.\n\nThe proofs assume that writing the state and reading it back gives what was written. That assumption is stated in the theorems themselves. The `Transfer` event isn't in the model, so the proofs say nothing about it.\n\nThe prover's notes for the report are accurate, so they went into the audit file unchanged. I found no bug in the contract. Next is the next open item in `.formal/plan.md`."
+      "notes": "I approved plan item 6, `WETH9.transferFrom`. Both proof files build, and neither contains `sorry`, `admit` or new axioms.\n\n**The four original theorems** (`WETH9TransferFrom.lean`, unchanged) are stated about the generated def itself, not a restatement. Together they cover every path through it:\n- **Reverts on balance:** the call reverts when `balanceOf[src] < wad`.\n- **Reverts on allowance:** someone other than `src` with a finite allowance below `wad` gets a revert.\n- **Succeeds, spending the allowance:** it returns `true` and the theorem gives the exact final storage. The allowance goes down by `wad`, `src` is debited and `dst` is credited. Because the whole state is given, nothing else can change.\n- **Succeeds without spending:** when `src` is the caller, or the allowance is the maximum value (2^256 − 1, treated as unlimited), only `balanceOf` is written.\n\n**The new conservation lemma** (`transferFrom_conserves` in `WETH9Conservation.lean`) is built from those four theorems. Whenever the call succeeds, the sum of `balanceOf` over any list of distinct accounts that includes `src` and `dst` stays the same, including when `src = dst`. It assumes `balanceOf[src] < 2^256` and that crediting `dst` doesn't overflow when `src ≠ dst`, and both assumptions are stated plainly in the lemma.\n\nThe prover gave no notes for the report, so I wrote them in the verdict:\n- **Statement:** one bullet per theorem above.\n- **Assumptions:** reading storage after a write returns what was written, and a second write replaces the first. Also the two no-overflow conditions of the conservation lemma.\n- **Theorems:** all five names.\n\nI found no bug in the contract. Next is the next item in the plan."
     },
     "WETH9.totalSupply": {
       "verdict": "approve",

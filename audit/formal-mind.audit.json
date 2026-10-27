@@ -127,7 +127,7 @@
       "id": "P-06",
       "title": "WETH9.transferFrom",
       "status": "verified",
-      "description": "- `transferFrom_reverts_balance`: `WETH9.transferFrom` reverts with \"require\" when `balanceOf[src] < wad`.\n- `transferFrom_reverts_allowance`: when `balanceOf[src] ≥ wad`, `src ≠ msg.sender`, `allowance[src][msg.sender] ≠ 2^256−1` and `allowance[src][msg.sender] < wad`, it reverts with \"require\".\n- `transferFrom_succeeds_spend`: when `balanceOf[src] ≥ wad`, `src ≠ msg.sender` and the allowance is finite and at least `wad`, it returns `true`. The resulting state sets `allowance[src][msg.sender] := allowance − wad`, then `balanceOf[src] := balanceOf[src] − wad`, then `balanceOf[dst] := balanceOf[dst] + wad` (both wrapping mod 2^256, credit read after debit). No other field changes.\n- `transferFrom_succeeds_nospend`: when `balanceOf[src] ≥ wad` and either `src = msg.sender` or the allowance equals `2^256−1`, it returns `true`, writes only the same two `balanceOf` updates and leaves `allowance` unchanged.\n\n**Assumptions.** The state lens `ext` is lawful: `ext.get (ext.set w s) = s` and `ext.set (ext.set w s) t = ext.set w t`. The `Transfer` event is not modelled.",
+      "description": "- `WETH9.transferFrom` reverts when `balanceOf[src] < wad`.\n- When `balanceOf[src] ≥ wad`, `src ≠ msg.sender` and `allowance[src][msg.sender]` is neither `2^256-1` nor at least `wad`, it reverts.\n- When `src ≠ msg.sender`, the allowance is not `2^256-1` and both balance and allowance are at least `wad`, it returns `true`. It sets `allowance[src][msg.sender]` to the old allowance minus `wad`, then `balanceOf[src]` to the old balance minus `wad`, then `balanceOf[dst]` to its current value plus `wad`, all modulo 2^256. Nothing else in storage changes.\n- When `src = msg.sender` or the allowance is `2^256-1` and the balance is at least `wad`, it returns `true`. It writes only `balanceOf` in the same way and leaves `allowance` unchanged.\n- Whenever it succeeds, the sum of `balanceOf` over any duplicate-free list of accounts that contains `src` and `dst` does not change. This holds as long as `balanceOf[src] < 2^256` and, when `src ≠ dst`, `balanceOf[dst] + wad < 2^256`. It also holds when `src = dst`.\n\n**Assumptions.** The storage accessor `ext` behaves as a lens: reading after a write returns what was written (`get (set w s) = s`), and a second write replaces the first (`set (set w s) t = set w t`). The conservation lemma also assumes `balanceOf[src] < 2^256` and that crediting `dst` does not overflow when `src ≠ dst`.",
       "theorems": [
         {
           "name": "WETH9.Swarm.TF.transferFrom_reverts_balance"
@@ -140,6 +140,9 @@
         },
         {
           "name": "WETH9.Swarm.TF.transferFrom_succeeds_nospend"
+        },
+        {
+          "name": "WETH9.Swarm.Cons.transferFrom_conserves"
         }
       ],
       "files": [
