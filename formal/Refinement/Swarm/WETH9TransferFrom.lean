@@ -68,8 +68,8 @@ theorem transferFrom_succeeds_nospend {σ : Type} (ext : WETH9.Ext σ) (src dst 
          let b1 := upd s.balanceOf src (subw 256 (s.balanceOf src) wad)
          { s with balanceOf := upd b1 dst (addw 256 (b1 dst) wad) })) := by
   have hb' : ¬ (ext.get w).balanceOf src < wad := by omega
-  rcases hn with hn | hn
-  · subst hn
+  by_cases hs : src = e.sender
+  · subst hs
     simp [WETH9.transferFrom, hb', hget, hset,
       ReaderT.run, StateT.run, bind, ReaderT.bind, StateT.bind, Except.bind, read, ReaderT.read,
       readThe, MonadReaderOf.read, StateT.lift,
@@ -77,7 +77,8 @@ theorem transferFrom_succeeds_nospend {σ : Type} (ext : WETH9.Ext σ) (src dst 
       pure, ReaderT.pure, StateT.pure, Except.pure,
       modify, modifyGet, MonadStateOf.modifyGet, StateT.modifyGet, Functor.map,
       StateT.map, Except.map]
-  · simp [WETH9.transferFrom, hb', hn, hget, hset,
+  · have hn : (ext.get w).allowance src e.sender = 2 ^ 256 - 1 := hn.resolve_left hs
+    simp [WETH9.transferFrom, hb', hs, hn, hget, hset,
       ReaderT.run, StateT.run, bind, ReaderT.bind, StateT.bind, Except.bind, read, ReaderT.read,
       readThe, MonadReaderOf.read, StateT.lift,
       get, getThe, MonadStateOf.get, StateT.get, liftM, monadLift, MonadLift.monadLift,

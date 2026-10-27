@@ -7,5 +7,5 @@ One item per function in scope, from formal-ast: the contracts the Foundry scrip
 - [x] `WETH9.deposit` — WETH9 (src/WETH9.sol:34): payable · writes [balanceOf] · guards 0 · external calls 0
 - [x] `WETH9.withdraw` — WETH9 (src/WETH9.sol:38): nonpayable · writes [balanceOf] · guards 1 · external calls 1
 - [x] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): nonpayable · writes [balanceOf, allowance] · guards 2 · external calls 0
-- [ ] `WETH9.transferFrom` — WETH9 (src/WETH9.sol:59): nonpayable · writes [balanceOf, allowance] · guards 2 · external calls 0
-- [ ] `WETH9.totalSupply` — WETH9 (src/WETH9.sol:45): view · writes [] · guards 0 · external calls 0
+- [x] `WETH9.transferFrom` — WETH9 (src/WETH9.sol:59): nonpayable · writes [balanceOf, allowance] · guards 2 · external calls 0
+- [x] `WETH9.totalSupply` — WETH9 (src/WETH9.sol:45): view · writes [] · guards 0 · external calls 0

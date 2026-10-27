@@ -1,5 +1,5 @@
 {
-  "next_id": 1793124477,
+  "next_id": 1793124492,
   "jobs": [
     {
       "id": 1793124466,
@@ -201,12 +201,217 @@
       "kind": "prove",
       "item": 6,
       "text": "`WETH9.transferFrom` — WETH9 (src/WETH9.sol:59): nonpayable · writes [balanceOf, allowance] · guards 2 · external calls 0",
-      "state": "running",
+      "state": "done",
       "attempt": 1,
       "notes": "",
       "files": [
         "formal/Refinement/Swarm/WETH9TransferFrom.lean"
       ],
+      "summary": "Plan item 6 (`WETH9.transferFrom`) is proved. `lake build Refinement.Swarm.WETH9TransferFrom` passes with no `sorry`, and I've recorded the result for the report. I found no bug.\n\nThe file `formal/Refinement/Swarm/WETH9TransferFrom.lean` has four theorems about `WETH9.transferFrom`, split on the two `require` checks:\n\n1. **Low balance reverts:** if `balanceOf[src] < wad`, the call reverts with \"require\".\n2. **Low allowance reverts:** the balance is enough, but the caller isn't `src`, the allowance isn't the unlimited value `2^256−1`, and `allowance[src][msg.sender] < wad`. Then the call reverts with \"require\".\n3. **Success that spends allowance:** the caller isn't `src`, the allowance is limited and at least `wad`, and the balance is enough. The call returns `true`, and the new state is exactly:\n   - `allowance[src][msg.sender]` goes down by `wad`;\n   - `balanceOf[src]` goes down by `wad`;\n   - then `balanceOf[dst]` goes up by `wad`.\n   \n   Nothing else changes.\n4. **Success that doesn't spend allowance:** the caller is `src`, or the allowance is `2^256−1`. The call returns `true`, only the two `balanceOf` updates happen, and `allowance` is unchanged.\n\nAll four hold whenever the cases apply. Each proof unfolds the monad with the same `simp` lemmas as the existing `transfer` proof, plus the facts the case gives. Case 4 needed an extra split on whether `src` equals the caller, because `simp` couldn't settle that `if` from the \"or\" in the hypothesis.\n\nThe proofs assume two things:\n- **Lawful state accessor:** writing a state and reading it back gives what was written, and a second write replaces the first.\n- **Event not modelled:** the `Transfer` event isn't in the model.\n\nThe `balanceOf[src]` subtraction can't wrap, because the first `require` comes before it. The `balanceOf[dst]` addition is modelled as wrapping mod 2^256, which is what the code does. It can only overflow if the total supply passes 2^256, and the supply is backed by real ETH, so that can't happen.\n\nNext is the next open item in `.formal/plan.md`.",
+      "result": ""
+    },
+    {
+      "id": 1793124478,
+      "kind": "review",
+      "item": 6,
+      "text": "`WETH9.transferFrom` — WETH9 (src/WETH9.sol:59): nonpayable · writes [balanceOf, allowance] · guards 2 · external calls 0",
+      "state": "done",
+      "attempt": 1,
+      "notes": "Plan item 6 (`WETH9.transferFrom`) is proved. `lake build Refinement.Swarm.WETH9TransferFrom` passes with no `sorry`, and I've recorded the result for the report. I found no bug.\n\nThe file `formal/Refinement/Swarm/WETH9TransferFrom.lean` has four theorems about `WETH9.transferFrom`, split on the two `require` checks:\n\n1. **Low balance reverts:** if `balanceOf[src] < wad`, the call reverts with \"require\".\n2. **Low allowance reverts:** the balance is enough, but the caller isn't `src`, the allowance isn't the unlimited value `2^256−1`, and `allowance[src][msg.sender] < wad`. Then the call reverts with \"require\".\n3. **Success that spends allowance:** the caller isn't `src`, the allowance is limited and at least `wad`, and the balance is enough. The call returns `true`, and the new state is exactly:\n   - `allowance[src][msg.sender]` goes down by `wad`;\n   - `balanceOf[src]` goes down by `wad`;\n   - then `balanceOf[dst]` goes up by `wad`.\n   \n   Nothing else changes.\n4. **Success that doesn't spend allowance:** the caller is `src`, or the allowance is `2^256−1`. The call returns `true`, only the two `balanceOf` updates happen, and `allowance` is unchanged.\n\nAll four hold whenever the cases apply. Each proof unfolds the monad with the same `simp` lemmas as the existing `transfer` proof, plus the facts the case gives. Case 4 needed an extra split on whether `src` equals the caller, because `simp` couldn't settle that `if` from the \"or\" in the hypothesis.\n\nThe proofs assume two things:\n- **Lawful state accessor:** writing a state and reading it back gives what was written, and a second write replaces the first.\n- **Event not modelled:** the `Transfer` event isn't in the model.\n\nThe `balanceOf[src]` subtraction can't wrap, because the first `require` comes before it. The `balanceOf[dst]` addition is modelled as wrapping mod 2^256, which is what the code does. It can only overflow if the total supply passes 2^256, and the supply is backed by real ETH, so that can't happen.\n\nNext is the next open item in `.formal/plan.md`.\n\nChecked by the swarm: `lake build` passes; the Proofs page counts it as proved by formal/Refinement/Swarm/WETH9Transfer.lean:10 transfer_reverts; formal/Refinement/Swarm/WETH9Transfer.lean:21 transfer_succeeds; formal/Refinement/Swarm/WETH9TransferFrom.lean:10 transferFrom_reverts_balance; formal/Refinement/Swarm/WETH9TransferFrom.lean:20 transferFrom_reverts_allowance; formal/Refinement/Swarm/WETH9TransferFrom.lean:34 transferFrom_succeeds_spend; formal/Refinement/Swarm/WETH9TransferFrom.lean:60 transferFrom_succeeds_nospend.",
+      "files": [
+        "formal/Refinement/Swarm/WETH9TransferFrom.lean"
+      ],
+      "summary": "I approved plan item 6, `WETH9.transferFrom`. I didn't re-run `lake build` myself; the swarm's build passed, and I read the four theorems against the generated def. They match it exactly:\n- **Two revert cases:** low balance, and a low allowance when the caller isn't `src` and the allowance isn't unlimited.\n- **Two success cases:** one that spends the allowance and one that doesn't. Each states the exact resulting state.\n\nTogether the four cases cover every possible input. The proofs contain no `sorry`, `admit` or new axioms.\n\nThe proofs assume that writing the state and reading it back gives what was written. That assumption is stated in the theorems themselves. The `Transfer` event isn't in the model, so the proofs say nothing about it.\n\nThe prover's notes for the report are accurate, so they went into the audit file unchanged. I found no bug in the contract. Next is the next open item in `.formal/plan.md`.",
+      "result": "approve",
+      "property": {
+        "statement": "- `transferFrom_reverts_balance`: `WETH9.transferFrom` reverts with \"require\" when `balanceOf[src] < wad`.\n- `transferFrom_reverts_allowance`: when `balanceOf[src] ≥ wad`, `src ≠ msg.sender`, `allowance[src][msg.sender] ≠ 2^256−1` and `allowance[src][msg.sender] < wad`, it reverts with \"require\".\n- `transferFrom_succeeds_spend`: when `balanceOf[src] ≥ wad`, `src ≠ msg.sender` and the allowance is finite and at least `wad`, it returns `true`. The resulting state sets `allowance[src][msg.sender] := allowance − wad`, then `balanceOf[src] := balanceOf[src] − wad`, then `balanceOf[dst] := balanceOf[dst] + wad` (both wrapping mod 2^256, credit read after debit). No other field changes.\n- `transferFrom_succeeds_nospend`: when `balanceOf[src] ≥ wad` and either `src = msg.sender` or the allowance equals `2^256−1`, it returns `true`, writes only the same two `balanceOf` updates and leaves `allowance` unchanged.",
+        "assumptions": "The state lens `ext` is lawful: `ext.get (ext.set w s) = s` and `ext.set (ext.set w s) t = ext.set w t`. The `Transfer` event is not modelled.",
+        "theorems": [
+          "WETH9.Swarm.TF.transferFrom_reverts_balance",
+          "WETH9.Swarm.TF.transferFrom_reverts_allowance",
+          "WETH9.Swarm.TF.transferFrom_succeeds_spend",
+          "WETH9.Swarm.TF.transferFrom_succeeds_nospend"
+        ]
+      }
+    },
+    {
+      "id": 1793124479,
+      "kind": "prove",
+      "item": 7,
+      "text": "`WETH9.totalSupply` — WETH9 (src/WETH9.sol:45): view · writes [] · guards 0 · external calls 0",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [
+        "formal/Refinement/Swarm/WETH9TotalSupply.lean"
+      ],
+      "summary": "I proved plan item 7, `WETH9.totalSupply`, and `lake build Refinement.Swarm.WETH9TotalSupply` passes. The proof is in `formal/Refinement/Swarm/WETH9TotalSupply.lean`, with no `sorry`.\n\n**What the theorem says:** `WETH9.totalSupply_spec` states that for every environment `env` and storage state `s`:\n\n`((WETH9.totalSupply ext).run env).run s = .ok (env.balance, s)`\n\nIn plain terms, the function:\n- never reverts (it has no guards);\n- leaves storage exactly as it was (it writes nothing);\n- returns the contract's own ether balance, `address(this).balance`.\n\n**How it was proved:** the generated def just returns the balance from the environment. Running it is that read and nothing else, so `rfl` closes the theorem: both sides compute to the same value.\n\n**Assumption:** the model's `env.balance` stands for `address(this).balance` during the call.\n\nI've recorded the property for Formal Mind's report, and it is now waiting for the reviewer. Next is the next plan item.",
+      "result": ""
+    },
+    {
+      "id": 1793124480,
+      "kind": "review",
+      "item": 7,
+      "text": "`WETH9.totalSupply` — WETH9 (src/WETH9.sol:45): view · writes [] · guards 0 · external calls 0",
+      "state": "done",
+      "attempt": 1,
+      "notes": "I proved plan item 7, `WETH9.totalSupply`, and `lake build Refinement.Swarm.WETH9TotalSupply` passes. The proof is in `formal/Refinement/Swarm/WETH9TotalSupply.lean`, with no `sorry`.\n\n**What the theorem says:** `WETH9.totalSupply_spec` states that for every environment `env` and storage state `s`:\n\n`((WETH9.totalSupply ext).run env).run s = .ok (env.balance, s)`\n\nIn plain terms, the function:\n- never reverts (it has no guards);\n- leaves storage exactly as it was (it writes nothing);\n- returns the contract's own ether balance, `address(this).balance`.\n\n**How it was proved:** the generated def just returns the balance from the environment. Running it is that read and nothing else, so `rfl` closes the theorem: both sides compute to the same value.\n\n**Assumption:** the model's `env.balance` stands for `address(this).balance` during the call.\n\nI've recorded the property for Formal Mind's report, and it is now waiting for the reviewer. Next is the next plan item.\n\nChecked by the swarm: `lake build` passes; the Proofs page counts it as proved by formal/Refinement/Swarm/WETH9TotalSupply.lean:6 WETH9.totalSupply_spec.",
+      "files": [
+        "formal/Refinement/Swarm/WETH9TotalSupply.lean"
+      ],
+      "summary": "I approved plan item 7, `WETH9.totalSupply`.\n\nThe theorem is about the function as generated from the Solidity, not a rewritten copy. It says that for any environment and any storage state, `totalSupply` never reverts, changes no storage and returns the contract's own ether balance. That matches the code, which has no guards, writes nothing and just returns `address(this).balance`. The proof is a one-line `rfl` (both sides compute to the same value), with no `sorry` or added axioms.\n\nThe prover's notes for the report were accurate, so they went into the audit file unchanged. The one assumption is that the model's `env.balance` stands for `address(this).balance` during the call.\n\nNext is the next plan item.",
+      "result": "approve",
+      "property": {
+        "statement": "For every environment `env` and storage state `s`, `WETH9.totalSupply` never reverts, leaves storage unchanged, and returns `env.balance`, the contract's own ether balance (`address(this).balance`): `((WETH9.totalSupply ext).run env).run s = .ok (env.balance, s)`.",
+        "assumptions": "The model's `Env.balance` stands for `address(this).balance` during the call.",
+        "theorems": [
+          "WETH9.totalSupply_spec"
+        ]
+      }
+    },
+    {
+      "id": 1793124481,
+      "kind": "plan",
+      "item": 0,
+      "text": "",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [],
+      "summary": "",
+      "result": ""
+    },
+    {
+      "id": 1793124482,
+      "kind": "formalize",
+      "item": 0,
+      "text": "S-01",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [],
+      "summary": "I recorded S-01 as an **invariant**: in every reachable state, the sum of `balanceOf` over all addresses is at most `address(this).balance`. It has to hold at the start and stay true through every entry point: receive/fallback, `deposit`, `withdraw` (including re-entry through its ETH send), `transfer`, `transferFrom` and `approve`.\n\nI made three assumptions:\n- **\"At most\", not equality.** ETH can be forced into the contract (selfdestruct, coinbase), which only adds to its balance.\n- **No overflow hiding.** The sum is computed without a uint256 limit, so an overflow in it can't make the check pass.\n- **Checked when each call finishes.** \"After any call\" means the state at the end of each top-level call to WETH9.\n\nPlease confirm or correct it. The swarm doesn't prove invariants yet, so nothing will be proved for S-01 until that support exists.",
+      "result": ""
+    },
+    {
+      "id": 1793124483,
+      "kind": "formalize",
+      "item": 0,
+      "text": "S-02",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [],
+      "summary": "I recorded S-02 as an **invariant**: a claim about every state the contract can reach, not about one function. I restated it this way: in every state of WETH9, `totalSupply()` (which returns `address(this).balance`) is **at least** the sum of all `balanceOf`. The sum can be strictly smaller when ETH arrives without going through deposit or the fallback, for example via selfdestruct, a coinbase reward or ETH sent before deployment.\n\nI assumed three things:\n- `totalSupply()` returns `address(this).balance`, as in the standard WETH9.\n- ETH only leaves through `withdraw`, which first lowers the caller's `balanceOf` by the same amount.\n- Forced ETH is treated as an arbitrary increase in the balance between calls.\n\nI didn't open the contract with `functions` or `function` to confirm the first two, so they are still unchecked.\n\nYou can confirm or correct the wording in the app. Once confirmed, it waits in the list, because the swarm doesn't prove invariants yet.",
+      "result": ""
+    },
+    {
+      "id": 1793124484,
+      "kind": "formalize",
+      "item": 0,
+      "text": "S-03",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [],
+      "summary": "I recorded S-03 as a **conservation** claim: on every call that succeeds, `WETH9.transferFrom(src, dst, wad)` leaves the sum of `balanceOf` over all addresses unchanged. `transfer` calls `transferFrom(msg.sender, …)`, so it's covered too. When `src == dst`, the subtraction and addition hit the same address, so that balance doesn't change.\n\nI assumed three things:\n- **Range:** the sum is over every address, not a fixed list of holders.\n- **Successful calls only:** a call that reverts changes nothing. The check `balanceOf[src] >= wad` means the unchecked `balanceOf[dst] += wad` can't overflow, as long as the total supply fits in a uint256.\n- **Scope:** the claim says nothing about `allowance`, or about whether the sum of balances matches `totalSupply` (`address(this).balance`).\n\nNext, please confirm that this is what you meant. You could also extend it to tie balances to `totalSupply`, or require each balance to stay exactly the same when `src == dst`. Once confirmed, it stays recorded but won't be proved yet, because the swarm doesn't prove conservation claims at the moment.",
+      "result": ""
+    },
+    {
+      "id": 1793124485,
+      "kind": "formalize",
+      "item": 0,
+      "text": "S-04",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [],
+      "summary": "Nothing needs redoing. The S-04 formalization was recorded before the app quit, so it's still waiting for your confirmation and the swarm will start proving it once you confirm. The formalization is about `WETH9.transferFrom`:\n\n- Suppose someone other than `src` calls it, the call succeeds and `src`'s balance goes down. Then `src` must have approved that caller for at least `wad`.\n- The caller's allowance goes down by exactly `wad`. If it was `uint(-1)`, it stays `uint(-1)`.\n- The other functions can't lower someone else's balance: `withdraw` and `transfer` only debit the caller, and `deposit` and the fallback only add to balances.\n\nYou can confirm it, or ask me to state it instead as an access property covering every function that writes `balanceOf`.",
+      "result": ""
+    },
+    {
+      "id": 1793124486,
+      "kind": "answer",
+      "item": 0,
+      "text": "Write README.md at the repository root for readers on GitHub (formalmind/weth9): what WETH9 is and what Formal Mind verified; a table of every function with its status from the proof ledger (proved, partly proved, pending), its theorems (name, linked file under formal/Refinement/Swarm/) and one plain sentence on what each shows; the statements in .formal/statements.md with their marks and the proof or counterexample for each; what isn't covered and why; and how to check it yourself (cd formal && lake build). Claim only what the ledger and Lean show. Then keep working on the open statements and items, and update the README as they're proved.",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [
+        "README.md"
+      ],
+      "summary": "I wrote `README.md` at the repository root. Every claim in it matches the ledger and the Lean files, and `lake build` passes (exit 0).\n\n- **Functions:** all seven WETH9 entry points are marked proved in the ledger. The table names each one's theorems and links its file under `formal/Refinement/Swarm/`. Each row has one plain sentence on what the theorems show.\n- **Ledger counts are off:** the ledger says 3 theorems for `deposit` and 6 for `transferFrom`, but the files hold 2 and 4. The README lists only the theorems that exist in Lean.\n- **Statements:** none of S-01 to S-05 is proved or disproved yet. S-04 is waiting for you to confirm its formalization. No bugs have been reported.\n- **Not covered:** the README says the proofs don't yet show properties across calls or summed over all addresses, re-entrancy in `withdraw`, gas or forced ETH, or that the compiler preserves the source's meaning.\n\nNext I'll work on S-03, that `transfer` and `transferFrom` keep the total of balances unchanged. A sum over every address isn't defined for the model's `balanceOf`, so I plan to prove it over any finite set of addresses that includes `src` and `dst`, building on `transferFrom_succeeds_*`. That needs the assumption that `balanceOf[dst] + wad` doesn't overflow, which is the same assumption S-03 already makes. If you confirm S-04, the swarm will start proving it. I'll update the README as statements are proved.",
+      "result": ""
+    },
+    {
+      "id": 1793124487,
+      "kind": "formalize",
+      "item": 0,
+      "text": "S-05",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [],
+      "summary": "I've formalized S-05 as a **sequence** claim (a claim across several calls). The swarm can't prove that kind yet, so it is recorded but nothing is proved.\n\n**What it claims:** take an account A with a balance. Whatever other accounts call first, A can still call `withdraw(balanceOf[A])`. That call sets A's balance to zero and sends A the ETH. It reverts only if A's own address rejects the ETH or needs more than the 2300 gas that `transfer` passes on.\n\n**Two facts it depends on**, both read off `WETH9.withdraw`, whose only check is `balanceOf[msg.sender] >= wad`:\n- **ETH covers balances:** the contract always holds at least as much ETH as all balances added up, so the `transfer` never runs short.\n- **Nobody else lowers A's balance:** no other account can reduce `balanceOf[A]`, except a spender A approved, through `transferFrom`.\n\n**What I assumed:**\n- A spender A approved counts as A's own choice, so that case is left out.\n- The claim covers whatever A holds when A withdraws, not an earlier balance.\n- A's transaction has enough gas. EVM-level failures such as the call-depth limit are left out.\n- ETH forced into the contract (for example by `selfdestruct`) only adds to its holdings, so it can't break the first fact.\n\n**Please confirm, or correct one of these:**\n- Should a spender you approved also be unable to lower your balance? That would mean proving `transferFrom` can't take more than the allowance.\n- Or do you only want the single-call version: `withdraw(balanceOf[msg.sender])` never reverts when the contract's ETH covers it and the transfer succeeds? The swarm can prove that kind now.",
+      "result": ""
+    },
+    {
+      "id": 1793124488,
+      "kind": "plan",
+      "item": 0,
+      "text": "",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [],
+      "summary": "",
+      "result": ""
+    },
+    {
+      "id": 1793124489,
+      "kind": "answer",
+      "item": 0,
+      "text": "thanks assistant",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [],
+      "summary": "You're welcome. The plan stays the same and I haven't changed `.formal/plan.md`. The swarm will keep going through the WETH9 checklist. If you want it to focus on a particular function or property next, tell me and I'll add it.",
+      "result": ""
+    },
+    {
+      "id": 1793124490,
+      "kind": "plan",
+      "item": 0,
+      "text": "",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [],
+      "summary": "",
+      "result": ""
+    },
+    {
+      "id": 1793124491,
+      "kind": "answer",
+      "item": 0,
+      "text": "can you push readme",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [],
+      "summary": "I can't push the README. My tools only run `lake` and `forge` commands, read and write files in the folder, and file findings. There's no git and no shell, so I can't commit or push.\n\nTo push it yourself, run this from `/Users/meek/developer/asyncswap/formal-targets/weth9`:\n\n```\ngit add README.md audit/README.md\ngit commit -m \"Update README\"\ngit push\n```\n\n(Remove `audit/README.md` if you only meant the top-level README.)\n\nIf the README needs edits first, such as a summary of the proofs and findings so far, I can make them here before you push. Just say what it should cover.",
+      "result": ""
+    },
+    {
+      "id": 1793124492,
+      "kind": "plan",
+      "item": 0,
+      "text": "",
+      "state": "done",
+      "attempt": 1,
+      "notes": "",
+      "files": [],
       "summary": "",
       "result": ""
     }
