@@ -2,40 +2,40 @@
 
 Claims about the code in plain words, each proved or disproved by the swarm: `- [ ]` open, `- [~]` working, `- [x]` proved, `- [!]` disproved, `- [?]` waiting for you, `- [-]` can't be proved against this model. Add your own as `- [ ] <the claim>`; the indented lines under each one are the swarm's.
 
-- [~] S-01 · you · Solvency: the sum of all balances never exceeds the ETH the contract holds, after any call.
+- [!] S-01 · you · Solvency: the sum of all balances never exceeds the ETH the contract holds, after any call.
   - kind: invariant
   - means: In every reachable state of WETH9, the sum of `balanceOf[a]` over all addresses a is at most `address(this).balance`. It holds at deployment (both zero). It keeps holding after every successful call to `deposit`, the receive/fallback, `withdraw`, `transfer`, `transferFrom` and `approve`, including when `withdraw`'s ETH send re-enters the contract.
   - assumes: ETH forced in without a call (selfdestruct, coinbase rewards) only raises the contract's balance, so it can only widen the gap. It is allowed, and the claim is ≤ rather than =.
   - assumes: The sum of balances is taken over the naturals (unbounded), not in uint256 with wrap-around.
   - assumes: Calls that revert leave the state unchanged, so they can't break the invariant.
   - [x] `WETH9.approve` — WETH9 (src/WETH9.sol:49): if it holds before a successful call, it holds after
-  - [~] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
+  - [!] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
   - [ ] `WETH9.deposit` — WETH9 (src/WETH9.sol:34): if it holds before a successful call, it holds after
   - [ ] `WETH9.withdraw` — WETH9 (src/WETH9.sol:38): if it holds before a successful call, it holds after
   - [ ] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): if it holds before a successful call, it holds after
   - [ ] `WETH9.transferFrom` — WETH9 (src/WETH9.sol:59): if it holds before a successful call, it holds after
-- [~] S-02 · you · totalSupply() can be larger than the sum of balances: ETH forced in (selfdestruct, coinbase) is counted but owned by no one.
+- [!] S-02 · you · totalSupply() can be larger than the sum of balances: ETH forced in (selfdestruct, coinbase) is counted but owned by no one.
   - kind: invariant
   - means: In every reachable state of WETH9, the sum of `balanceOf` over all accounts is at most `totalSupply()` (the contract's ETH balance, `address(this).balance`). Every entry point (receive/fallback, deposit, withdraw, transfer, transferFrom, approve) keeps this true. Equality is not guaranteed: ETH that reaches the contract without calling it (selfdestruct to it, coinbase rewards, ETH sent before deployment) raises `totalSupply()` but credits no `balanceOf`. So the gap `totalSupply() - sum(balanceOf)` is never negative and can be positive.
   - assumes: totalSupply() returns address(this).balance
   - assumes: Forced ETH is modelled as an environment step that raises the contract's balance and changes no storage
   - assumes: The ETH that withdraw sends out leaves the contract's balance exactly by wad, and a reentrant call during that send also keeps the invariant
   - assumes: No uint256 overflow of balanceOf entries (sum of balances is bounded by total ETH)
-  - [ ] `WETH9.approve` — WETH9 (src/WETH9.sol:49): if it holds before a successful call, it holds after
-  - [ ] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
+  - [x] `WETH9.approve` — WETH9 (src/WETH9.sol:49): if it holds before a successful call, it holds after
+  - [!] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
   - [ ] `WETH9.deposit` — WETH9 (src/WETH9.sol:34): if it holds before a successful call, it holds after
   - [ ] `WETH9.withdraw` — WETH9 (src/WETH9.sol:38): if it holds before a successful call, it holds after
   - [ ] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): if it holds before a successful call, it holds after
   - [ ] `WETH9.transferFrom` — WETH9 (src/WETH9.sol:59): if it holds before a successful call, it holds after
-- [~] S-03 · you · transfer and transferFrom conserve the sum of balances, including a transfer to yourself.
+- [x] S-03 · you · transfer and transferFrom conserve the sum of balances, including a transfer to yourself.
   - you said: Only about transfer and transferFrom (functions: WETH9.transfer, WETH9.transferFrom): every successful call leaves the sum of balanceOf over all addresses unchanged, including when src == dst. deposit and withdraw change the sum on purpose and are not part of this claim.
   - kind: conservation
   - means: For WETH9.transfer and WETH9.transferFrom only: after any call that doesn't revert, the total of balanceOf over all addresses is the same as before. This also holds when the sender and the recipient are the same address. Reverted calls change nothing. deposit and withdraw are not covered.
   - assumes: The sum is taken over every address (all 2^160 of them), as a mathematical total of balanceOf
   - assumes: Only successful calls are considered; a reverting call leaves state unchanged
   - assumes: transfer is treated as transferFrom(msg.sender, dst, wad), as WETH9 implements it
-  - [ ] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): a successful call keeps the conserved quantity unchanged
-  - [ ] `WETH9.transferFrom` — WETH9 (src/WETH9.sol:59): a successful call keeps the conserved quantity unchanged
+  - [x] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): a successful call keeps the conserved quantity unchanged
+  - [x] `WETH9.transferFrom` — WETH9 (src/WETH9.sol:59): a successful call keeps the conserved quantity unchanged
 - [x] S-04 · you · No one can lower another account's balance except through an allowance that account gave them, and an allowance of uint(-1) is never spent down.
   - kind: function · WETH9.transferFrom
   - means: Whenever a caller successfully moves a nonzero amount out of someone else's balance with transferFrom, src must have approved that caller for at least that amount beforehand. The allowance then goes down by exactly the amount moved, except an allowance of type(uint256).max, which stays the same. The other functions that write balanceOf (deposit, withdraw, transfer) are taken to change only the caller's own balance, or to raise someone else's. That part is an assumption here and is not proved.
@@ -43,7 +43,7 @@ Claims about the code in plain words, each proved or disproved by the swarm: `- 
   - assumes: Transfers to oneself (src == dst) and zero-amount transfers don't count as lowering a balance
   - assumes: uint(-1) means type(uint256).max
   - [x] `WETH9.transferFrom` — WETH9 (src/WETH9.sol:59): If transferFrom(src, dst, wad) succeeds with msg.sender ≠ src, src ≠ dst and wad > 0, then before the call allowance[src][msg.sender] ≥ wad, and afterwards allowance[src][msg.sender] has dropped by exactly wad unless it was type(uint256).max, in which case it is unchanged.
-- [~] S-05 · you · Anyone holding a balance can always withdraw all of it (no call by another account can stop them), unless their own address rejects ETH sent with 2300 gas.
+- [!] S-05 · you · Anyone holding a balance can always withdraw all of it (no call by another account can stop them), unless their own address rejects ETH sent with 2300 gas.
   - kind: sequence
   - means: Take any reachable state of WETH9 and any address A with balanceOf[A] = b. After any sequence of calls by other accounts (deposit, withdraw, transfer, transferFrom, approve), A can still call withdraw(balanceOf[A]) and it succeeds: A's balance drops to 0 and A receives that much ETH. Other accounts can't lower balanceOf[A] without A's approval, and they can't drain the contract's ETH below the total of all balances. The only allowed failure is A's own address reverting or running out of the 2300 gas when `transfer` sends it ETH. This rests on the fact that WETH9's ETH balance is always at least the sum of balanceOf (solvency).
   - assumes: A has given no allowance, or 'another account' excludes spenders A has approved: an approved spender can move A's balance with transferFrom
@@ -51,20 +51,20 @@ Claims about the code in plain words, each proved or disproved by the swarm: `- 
   - assumes: Solvency: address(WETH9).balance >= sum of balanceOf in every reachable state. ETH forced in through selfdestruct only makes this easier to hold
   - assumes: A's balance can grow through deposits or incoming transfers, and 'all of it' means A's balance at the moment A withdraws
   - [x] `WETH9.approve` — WETH9 (src/WETH9.sol:49): no call to it by another account makes the claim false
-  - [ ] `WETH9.«»` — WETH9 (src/WETH9.sol:31): no call to it by another account makes the claim false
+  - [!] `WETH9.«»` — WETH9 (src/WETH9.sol:31): no call to it by another account makes the claim false
   - [ ] `WETH9.deposit` — WETH9 (src/WETH9.sol:34): no call to it by another account makes the claim false
   - [ ] `WETH9.withdraw` — WETH9 (src/WETH9.sol:38): no call to it by another account makes the claim false
   - [ ] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): no call to it by another account makes the claim false
   - [ ] `WETH9.transferFrom` — WETH9 (src/WETH9.sol:59): no call to it by another account makes the claim false
-- [ ] S-06 · you · The sum of `WETH9.balanceOf` over all accounts equals `totalSupply()`, i.e. `address(this).balance`, apart from ETH forced in (selfdestruct or coinbase): without forced ETH it is exact equality, and with it the sum is lower by exactly the forced amount.
+- [~] S-06 · you · The sum of `WETH9.balanceOf` over all accounts equals `totalSupply()`, i.e. `address(this).balance`, apart from ETH forced in (selfdestruct or coinbase): without forced ETH it is exact equality, and with it the sum is lower by exactly the forced amount.
   - why: If it fails, some WETH is not backed by ETH, or some deposited ETH can't be withdrawn.
   - kind: invariant
   - means: In every reachable state of WETH9, the sum of balanceOf[a] over all addresses a plus the ETH forced into the contract (via selfdestruct or as a coinbase/block reward, which runs no code) equals address(this).balance, which is what totalSupply() returns. This must hold after every state-changing entry point (deposit and the receive/fallback path, withdraw, transfer, transferFrom, approve). If no ETH was ever forced in, the sum of balances is exactly totalSupply(). The forced amount is the total ETH received without going through deposit or the fallback.
   - assumes: Forced ETH is modelled as ghost state: the running total of ETH that arrived without calling deposit or the fallback
   - assumes: withdraw's ETH transfer to msg.sender either succeeds in full or reverts the whole call (re-entry during the send leaves the relation intact)
   - assumes: The contract starts with zero balance and zero balanceOf everywhere, apart from ETH already forced in, which counts toward the forced amount
-  - [ ] `WETH9.approve` — WETH9 (src/WETH9.sol:49): if it holds before a successful call, it holds after
-  - [ ] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
+  - [x] `WETH9.approve` — WETH9 (src/WETH9.sol:49): if it holds before a successful call, it holds after
+  - [~] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
   - [ ] `WETH9.deposit` — WETH9 (src/WETH9.sol:34): if it holds before a successful call, it holds after
   - [ ] `WETH9.withdraw` — WETH9 (src/WETH9.sol:38): if it holds before a successful call, it holds after
   - [ ] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): if it holds before a successful call, it holds after

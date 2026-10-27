@@ -186,6 +186,37 @@
       "files": [
         "formal/Refinement/Statements/S04/WETH9TransferFrom.lean"
       ]
+    },
+    {
+      "id": "P-S03",
+      "statement": "S-03",
+      "title": "transfer and transferFrom conserve the sum of balances, including a transfer to yourself.",
+      "status": "verified",
+      "description": "For WETH9.transfer and WETH9.transferFrom only: after any call that doesn't revert, the total of balanceOf over all addresses is the same as before. This also holds when the sender and the recipient are the same address. Reverted calls change nothing. deposit and withdraw are not covered.\n\n**`WETH9.transfer`**\n\n`WETH9.transfer` conserves total WETH: for any call that returns `.ok (r, w')`, the sum of `balanceOf a` over every address `a < 2^160` (`S03T.total balanceOf (2^160)`) is the same in `w'` as in `w`. This includes the self-transfer case `dst = msg.sender`, where the balance mapping comes back exactly as it was (debit `b − wad`, then credit `(b − wad) + wad = b`, with no wraparound). When `dst ≠ msg.sender`, the sender loses exactly `wad` and `dst` gains exactly `wad`. Reverting calls (`balanceOf[msg.sender] < wad`) produce no post-state. Supporting lemmas: `S03T.total_upd` (updating one entry k < n replaces `f k` by `v` in the total) and `S03T.total_congr`.\n\n**`WETH9.transferFrom`**\n\n`WETH9.transferFrom` conserves the sum of `balanceOf` over every address (`List.range (2^160)`): on any successful call the total after equals the total before. This holds whether the allowance is spent or left alone (`src = msg.sender`, or allowance `2^256 - 1`). It also holds when `src = dst`, where the debit and credit hit the same entry and leave the balance unchanged.\n\n**Assumptions.** The sum is taken over every address (all 2^160 of them), as a mathematical total of balanceOf. Only successful calls are considered; a reverting call leaves state unchanged. transfer is treated as transferFrom(msg.sender, dst, wad), as WETH9 implements it. The storage accessor `ext` satisfies get-after-set and set-after-set. `msg.sender` and `dst` are addresses (< 2^160). Every `balanceOf` entry is a uint256 (< 2^256). When `dst ≠ msg.sender`, crediting `dst` doesn't overflow: `balanceOf[dst] + wad < 2^256`. This always holds while total supply is below 2^256, as it is for WETH, which is backed by ETH. Without it, the wrapping (unchecked) `+=` would only conserve the sum mod 2^256. `ext.get`/`ext.set` form a lens: get-after-set returns the stored state, and set-after-set keeps only the last write. `src` and `dst` are below 2^160. `balanceOf[src]` is below 2^256. When `src ≠ dst`, `balanceOf[dst] + wad < 2^256`, so the unchecked `+=` doesn't wrap. The theorem assumes this rather than deriving it. it would follow from a total-supply bound, which isn't proved here. Only successful calls are considered.",
+      "theorems": [
+        {
+          "name": "S03.WETH9_transfer"
+        },
+        {
+          "name": "S03T.total_upd"
+        },
+        {
+          "name": "S03T.total_congr"
+        },
+        {
+          "name": "S03.WETH9_transferFrom"
+        },
+        {
+          "name": "WETH9.Swarm.Cons.transferFrom_conserves"
+        },
+        {
+          "name": "WETH9.Swarm.Cons.moveBal_sum"
+        }
+      ],
+      "files": [
+        "formal/Refinement/Statements/S03/WETH9Transfer.lean",
+        "formal/Refinement/Statements/S03/WETH9TransferFrom.lean"
+      ]
     }
   ]
 }

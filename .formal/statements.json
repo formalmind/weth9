@@ -45,5 +45,67 @@
         ]
       }
     }
+  },
+  "S-06": {
+    "1": {
+      "theorem": "S06.WETH9_approve",
+      "files": [
+        "formal/Refinement/Statements/S06/WETH9Approve.lean"
+      ],
+      "notes": {
+        "statement": "`WETH9.approve` preserves the S-06 balance relation. If, before the call, every account outside a finite list `S` has zero `balanceOf` and `Σ_{a∈S} balanceOf a + forced = address(this).balance` (the value `totalSupply()` returns, with `forced` the ghost total of forced-in ETH), then on every successful run both facts still hold in the post-call state. `approve` writes only `allowance[msg.sender][guy]`, so `balanceOf` is unchanged, and it moves no ETH.",
+        "theorems": [
+          "S06.WETH9_approve"
+        ],
+        "assumptions": "The storage accessor satisfies `ext.get (ext.set w s) = s`. The contract's ETH balance is the call environment's `env.balance`, which the call cannot change (`approve` is nonpayable), and the forced-ETH ghost is fixed across the call. The sum over all addresses is written as a sum over a finite list `S`, with every account outside it holding a zero balance."
+      }
+    }
+  },
+  "S-03": {
+    "1": {
+      "theorem": "S03.WETH9_transfer",
+      "files": [
+        "formal/Refinement/Statements/S03/WETH9Transfer.lean"
+      ],
+      "notes": {
+        "statement": "`WETH9.transfer` conserves total WETH: for any call that returns `.ok (r, w')`, the sum of `balanceOf a` over every address `a < 2^160` (`S03T.total balanceOf (2^160)`) is the same in `w'` as in `w`. This includes the self-transfer case `dst = msg.sender`, where the balance mapping comes back exactly as it was (debit `b − wad`, then credit `(b − wad) + wad = b`, with no wraparound). When `dst ≠ msg.sender`, the sender loses exactly `wad` and `dst` gains exactly `wad`. Reverting calls (`balanceOf[msg.sender] < wad`) produce no post-state. Supporting lemmas: `S03T.total_upd` (updating one entry k < n replaces `f k` by `v` in the total) and `S03T.total_congr`.",
+        "assumptions": "The storage accessor `ext` satisfies get-after-set and set-after-set. `msg.sender` and `dst` are addresses (< 2^160). Every `balanceOf` entry is a uint256 (< 2^256). When `dst ≠ msg.sender`, crediting `dst` doesn't overflow: `balanceOf[dst] + wad < 2^256`. This always holds while total supply is below 2^256, as it is for WETH, which is backed by ETH. Without it, the wrapping (unchecked) `+=` would only conserve the sum mod 2^256.",
+        "theorems": [
+          "S03.WETH9_transfer",
+          "S03T.total_upd",
+          "S03T.total_congr"
+        ]
+      }
+    },
+    "2": {
+      "theorem": "S03.WETH9_transferFrom",
+      "files": [
+        "formal/Refinement/Statements/S03/WETH9TransferFrom.lean"
+      ],
+      "notes": {
+        "statement": "`WETH9.transferFrom` conserves the sum of `balanceOf` over every address (`List.range (2^160)`): on any successful call the total after equals the total before. This holds whether the allowance is spent or left alone (`src = msg.sender`, or allowance `2^256 - 1`). It also holds when `src = dst`, where the debit and credit hit the same entry and leave the balance unchanged.",
+        "assumptions": "`ext.get`/`ext.set` form a lens: get-after-set returns the stored state, and set-after-set keeps only the last write. `src` and `dst` are below 2^160. `balanceOf[src]` is below 2^256. When `src ≠ dst`, `balanceOf[dst] + wad < 2^256`, so the unchecked `+=` doesn't wrap. The theorem assumes this rather than deriving it; it would follow from a total-supply bound, which isn't proved here. Only successful calls are considered.",
+        "theorems": [
+          "S03.WETH9_transferFrom",
+          "WETH9.Swarm.Cons.transferFrom_conserves",
+          "WETH9.Swarm.Cons.moveBal_sum"
+        ]
+      }
+    }
+  },
+  "S-02": {
+    "1": {
+      "theorem": "S02.WETH9_approve",
+      "files": [
+        "formal/Refinement/Statements/S02/WETH9Approve.lean"
+      ],
+      "notes": {
+        "statement": "`WETH9.approve` preserves S-02. The call always succeeds and returns `true`. Its only storage write is `allowance[msg.sender][guy] = wad`, so every `balanceOf` entry is unchanged, and the contract's ETH balance (`totalSupply()`, modelled as `env.balance`) is the same before and after. So if `Σ_{a∈S} balanceOf a ≤ totalSupply()` holds before the call for every duplicate-free list of accounts `S`, it holds after.",
+        "assumptions": "The storage accessor reads back what was written (`ext.get (ext.set w s) = s`). `totalSupply()` is modelled as `env.balance`, which the call environment fixes; the nonpayable `msg.value` check is not modelled.",
+        "theorems": [
+          "S02.WETH9_approve"
+        ]
+      }
+    }
   }
 }
