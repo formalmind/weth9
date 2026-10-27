@@ -22,13 +22,13 @@ The function theorems are stated over an abstract storage accessor `ext`. Where 
 
 ## Statements
 
-These are claims from `.formal/statements.md`. None is proved or disproved yet.
+These are claims from `.formal/statements.md`.
 
 | # | Claim | Mark | Proof / counterexample |
 |---|---|---|---|
 | S-01 | Solvency: the sum of all balances never exceeds the contract's ETH | `[ ]` open (invariant) | none yet |
 | S-02 | `totalSupply()` ≥ sum of balances, and it can be strictly greater (forced ETH) | `[ ]` open (invariant) | none yet |
-| S-03 | `transfer`/`transferFrom` conserve the sum of balances, including self-transfer | `[ ]` open (conservation) | none yet |
+| S-03 | `transfer`/`transferFrom` conserve the sum of balances, including self-transfer | `[~]` working (conservation): `transferFrom` proved, `transfer` next | `moveBal_sum`, `transferFrom_conserves`: [WETH9Conservation.lean](formal/Refinement/Swarm/WETH9Conservation.lean). Whenever `transferFrom` succeeds, through either branch and including `src = dst`, the sum of `balanceOf` over any duplicate-free list of accounts containing `src` and `dst` is unchanged. It assumes `balanceOf[src] < 2^256` and that `balanceOf[dst] + wad` doesn't wrap. |
 | S-04 | Only an allowance lets someone lower another account's balance, and a `uint(-1)` allowance is never spent down | `[?]` waiting for the maintainer to confirm the formalization | none yet |
 | S-05 | Anyone can always withdraw their whole balance unless their own address rejects a 2300-gas ETH send | `[ ]` open | none yet |
 
@@ -36,8 +36,9 @@ No bugs have been reported (`audit/formal-mind.audit.json`).
 
 ## Not covered
 
-- **Invariants and conservation across calls (S-01, S-02, S-03).** The proofs describe each call on its own. None of them sums balances over all addresses or follows state across a sequence of transactions. Formal Mind's pipeline handles invariant and conservation statements in a later stage.
-- **Re-entrancy and the ETH send in `withdraw`.** The model treats the external call as an opaque step. No theorem covers what a re-entrant receiver does.
+- **Invariants across calls (S-01, S-02).** The model keeps no ETH balance in storage. The contract's ETH appears only as `env.balance` of each call, so solvency has to be stated as a condition linking `env.balance` from one call to the next. That is not done yet.
+- **Overflow in S-03.** Conservation assumes the credit to `dst` does not wrap past 2^256. That holds while total supply stays below 2^256 ETH.
+- **Re-entrancy and the ETH send in `withdraw`.** The model treats the external call as an opaque step (`ext.lowCall`). No theorem covers what a re-entrant receiver does. S-05 will need an explicit assumption about that call.
 - **Gas, liveness and forced ETH (S-05, part of S-02).** The model does not cover gas or ETH that arrives through selfdestruct or coinbase.
 - **Compiler and EVM.** The model comes from solc's AST, not the bytecode. The proofs assume that the compiler preserves the source's meaning.
 
@@ -48,3 +49,35 @@ cd formal && lake build
 ```
 
 This builds the generated model and every proof under `formal/Refinement/`. It needs no Mathlib. It should end with `Build completed successfully`.
+
+<!-- formal-mind:start -->
+## Verification
+
+1 of 7 functions proved: each theorem built and checked by Lean (no `sorry`, no axioms beyond Lean's own) and approved by the reviewer, kept in the proof ledger (`.formal/ledger.json`).
+
+### Functions
+
+| Function | Status | Theorems | Shows |
+|---|---|---|---|
+| `WETH9.deposit` | partly proved | [`WETH9.deposit_spec`](formal/Refinement/Swarm/WETH9Deposit.lean#L7), [`WETH9.deposit_frame`](formal/Refinement/Swarm/WETH9Deposit.lean#L18), [`WETH9.fallback_spec`](formal/Refinement/Swarm/WETH9Fallback.lean#L7) | returns, writes |
+| `WETH9.«»` | pending | [`S01.WETH9_`](formal/Refinement/Statements/S01/WETH9Fallback.lean#L27), [`WETH9.fallback_spec`](formal/Refinement/Swarm/WETH9Fallback.lean#L7), [`WETH9.fallback_frame`](formal/Refinement/Swarm/WETH9Fallback.lean#L18) | returns, writes |
+| `WETH9.withdraw` | proved | [`WETH9.withdraw_reverts`](formal/Refinement/Swarm/WETH9Withdraw.lean#L10), [`WETH9.withdraw_spec`](formal/Refinement/Swarm/WETH9Withdraw.lean#L23) | returns, reverts, writes |
+| `WETH9.totalSupply` | partly proved | [`WETH9.totalSupply_spec`](formal/Refinement/Swarm/WETH9TotalSupply.lean#L6) | returns |
+| `WETH9.approve` | pending | [`S01.WETH9_approve`](formal/Refinement/Statements/S01/WETH9Approve.lean#L10), [`S02.WETH9_approve`](formal/Refinement/Statements/S02/WETH9Approve.lean#L10), [`S05.WETH9_approve`](formal/Refinement/Statements/S05/WETH9Approve.lean#L9), [`WETH9.approve_spec`](formal/Refinement/Swarm/WETH9Approve.lean#L8), [`WETH9.approve_allowance`](formal/Refinement/Swarm/WETH9Approve.lean#L17) | returns, writes |
+| `WETH9.transferFrom` | pending | [`S04.WETH9_transferFrom`](formal/Refinement/Statements/S04/WETH9TransferFrom.lean#L11), [`WETH9.Swarm.Cons.transferFrom_conserves`](formal/Refinement/Swarm/WETH9Conservation.lean#L105), [`WETH9.Swarm.transfer_reverts`](formal/Refinement/Swarm/WETH9Transfer.lean#L10), [`WETH9.Swarm.transfer_succeeds`](formal/Refinement/Swarm/WETH9Transfer.lean#L21), [`WETH9.Swarm.TF.transferFrom_reverts_balance`](formal/Refinement/Swarm/WETH9TransferFrom.lean#L10), [`WETH9.Swarm.TF.transferFrom_reverts_allowance`](formal/Refinement/Swarm/WETH9TransferFrom.lean#L20), [`WETH9.Swarm.TF.transferFrom_succeeds_spend`](formal/Refinement/Swarm/WETH9TransferFrom.lean#L34), [`WETH9.Swarm.TF.transferFrom_succeeds_nospend`](formal/Refinement/Swarm/WETH9TransferFrom.lean#L60) | returns, reverts, writes |
+| `WETH9.transfer` | pending | [`S03.WETH9_transfer`](formal/Refinement/Statements/S03/WETH9Transfer.lean#L10), [`WETH9.Swarm.transfer_reverts`](formal/Refinement/Swarm/WETH9Transfer.lean#L10), [`WETH9.Swarm.transfer_succeeds`](formal/Refinement/Swarm/WETH9Transfer.lean#L21) | returns, reverts, writes |
+
+### Statements
+
+| # | Claim | By | Status | Proved by |
+|---|---|---|---|---|
+| S-01 | Solvency: the sum of all balances never exceeds the ETH the contract holds, after any call. | you | working (invariant) | 1 of 6 entry points |
+| S-02 | totalSupply() can be larger than the sum of balances: ETH forced in (selfdestruct, coinbase) is counted but owned by no one. | you | working (invariant) | 0 of 6 entry points |
+| S-03 | transfer and transferFrom conserve the sum of balances, including a transfer to yourself. | you | working (conservation) | 0 of 2 entry points |
+| S-04 | No one can lower another account's balance except through an allowance that account gave them, and an allowance of uint(-1) is never spent down. | you | proved (function) | 1 of 1 entry points |
+| S-05 | Anyone holding a balance can always withdraw all of it (no call by another account can stop them), unless their own address rejects ETH sent with 2300 gas. | you | working (sequence) | 1 of 6 entry points |
+| S-06 | The sum of `WETH9.balanceOf` over all accounts equals `totalSupply()`, i.e. `address(this).balance`, apart from ETH forced in (selfdestruct or coinbase): without forced ETH it is exact equality, and with it the sum is lower by exactly the forced amount. | you | open (invariant) | 0 of 6 entry points |
+| S-08 | `WETH9.transfer` and `WETH9.transferFrom` change `balanceOf` only at `src` and `dst`: every other account's `balanceOf` is unchanged (and `allowance` changes only at `[src][msg.sender]` in `transferFrom`). | you | open (conservation) | 0 of 2 entry points |
+
+Check it yourself: `cd formal && lake build`.
+<!-- formal-mind:end -->

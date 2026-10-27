@@ -77,9 +77,59 @@
     }
   },
   "checked": {
-    "at": 1793124917822,
-    "sources": "3:76194d617ee7d2cb",
+    "at": 1793131060440,
+    "sources": "3:7a0c2a69d494e10b",
     "results": {
+      "S01.WETH9_": {
+        "ok": true,
+        "ty": "@S01.WETH9_ : ∀ {σ : Type} (ext : WETH9.Ext σ) (env : FormalAst.Env) (w : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    env.value ≤ env.balance →\n      (∀ (S : List Nat), S.Nodup → (List.map (ext.get w).balanceOf S).sum ≤ env.balance - env.value) →\n        ∃ w',\n          (ReaderT.run (WETH9.WETH9.«» ext) env).run w = Except.ok ((), w') ∧\n            ∀ (S : List Nat), S.Nodup → (List.map (ext.get w').balanceOf S).sum ≤ env.balance",
+        "axioms": [
+          "propext",
+          "Quot.sound"
+        ]
+      },
+      "S01.WETH9_approve": {
+        "ok": true,
+        "ty": "@S01.WETH9_approve : ∀ {σ : Type} (ext : WETH9.Ext σ) (guy wad : Nat) (env : FormalAst.Env) (w : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    (∀ (S : List Nat), S.Nodup → (List.map (ext.get w).balanceOf S).sum ≤ env.balance) →\n      ∃ w',\n        (ReaderT.run (WETH9.WETH9.approve ext guy wad) env).run w = Except.ok (true, w') ∧\n          ∀ (S : List Nat), S.Nodup → (List.map (ext.get w').balanceOf S).sum ≤ env.balance",
+        "axioms": []
+      },
+      "S02.WETH9_approve": {
+        "ok": true,
+        "ty": "@S02.WETH9_approve : ∀ {σ : Type} (ext : WETH9.Ext σ) (guy wad : Nat) (env : FormalAst.Env) (w : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    (∀ (S : List Nat), S.Nodup → (List.map (ext.get w).balanceOf S).sum ≤ env.balance) →\n      ∀ (r : Bool) (w' : σ),\n        (ReaderT.run (WETH9.WETH9.approve ext guy wad) env).run w = Except.ok (r, w') →\n          ∀ (S : List Nat), S.Nodup → (List.map (ext.get w').balanceOf S).sum ≤ env.balance",
+        "axioms": []
+      },
+      "S03.WETH9_transfer": {
+        "ok": true,
+        "ty": "@S03.WETH9_transfer : ∀ {σ : Type} (ext : WETH9.Ext σ) (dst wad : Nat) (e : FormalAst.Env) (w : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    (∀ (w : σ) (s t : WETH9.State), ext.set (ext.set w s) t = ext.set w t) →\n      e.sender < 2 ^ 160 →\n        dst < 2 ^ 160 →\n          (ext.get w).balanceOf e.sender < 2 ^ 256 →\n            (e.sender ≠ dst → (ext.get w).balanceOf dst + wad < 2 ^ 256) →\n              ∀ (r : Bool) (w' : σ),\n                (ReaderT.run (WETH9.WETH9.transfer ext dst wad) e).run w = Except.ok (r, w') →\n                  WETH9.Swarm.Cons.lsum (ext.get w').balanceOf (List.range (2 ^ 160)) =\n                    WETH9.Swarm.Cons.lsum (ext.get w).balanceOf (List.range (2 ^ 160))",
+        "axioms": [
+          "propext",
+          "Classical.choice",
+          "Quot.sound"
+        ]
+      },
+      "S04.WETH9_transferFrom": {
+        "ok": true,
+        "ty": "@S04.WETH9_transferFrom : ∀ {σ : Type} (ext : WETH9.Ext σ) (src dst wad : Nat) (e : FormalAst.Env) (w w' : σ)\n  (r : Bool),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    (∀ (w : σ) (s t : WETH9.State), ext.set (ext.set w s) t = ext.set w t) →\n      src ≠ e.sender →\n        src ≠ dst →\n          0 < wad →\n            wad < 2 ^ 256 →\n              (ext.get w).allowance src e.sender < 2 ^ 256 →\n                (ReaderT.run (WETH9.WETH9.transferFrom ext src dst wad) e).run w = Except.ok (r, w') →\n                  wad ≤ (ext.get w).allowance src e.sender ∧\n                    (ext.get w').allowance src e.sender =\n                      if (ext.get w).allowance src e.sender = 2 ^ 256 - 1 then (ext.get w).allowance src e.sender\n                      else (ext.get w).allowance src e.sender - wad",
+        "axioms": [
+          "propext",
+          "Quot.sound"
+        ]
+      },
+      "S05.WETH9_approve": {
+        "ok": true,
+        "ty": "@S05.WETH9_approve : ∀ {σ : Type} (ext : WETH9.Ext σ) (guy wad : Nat) (env : FormalAst.Env) (w : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    ∀ (A : Nat),\n      env.sender ≠ A →\n        ∃ w',\n          (ReaderT.run (WETH9.WETH9.approve ext guy wad) env).run w = Except.ok (true, w') ∧\n            (ext.get w').balanceOf = (ext.get w).balanceOf ∧ (ext.get w').allowance A = (ext.get w).allowance A",
+        "axioms": [
+          "propext"
+        ]
+      },
+      "WETH9.Swarm.Cons.transferFrom_conserves": {
+        "ok": true,
+        "ty": "@WETH9.Swarm.Cons.transferFrom_conserves : ∀ {σ : Type} (ext : WETH9.Ext σ) (src dst wad : Nat) (e : FormalAst.Env)\n  (w : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    (∀ (w : σ) (s t : WETH9.State), ext.set (ext.set w s) t = ext.set w t) →\n      ∀ (l : List Nat),\n        l.Nodup →\n          src ∈ l →\n            dst ∈ l →\n              (ext.get w).balanceOf src < 2 ^ 256 →\n                (src ≠ dst → (ext.get w).balanceOf dst + wad < 2 ^ 256) →\n                  ∀ (r : Bool) (w' : σ),\n                    (ReaderT.run (WETH9.WETH9.transferFrom ext src dst wad) e).run w = Except.ok (r, w') →\n                      WETH9.Swarm.Cons.lsum (ext.get w').balanceOf l = WETH9.Swarm.Cons.lsum (ext.get w).balanceOf l",
+        "axioms": [
+          "propext",
+          "Quot.sound"
+        ]
+      },
       "WETH9.Swarm.TF.transferFrom_reverts_allowance": {
         "ok": true,
         "ty": "@WETH9.Swarm.TF.transferFrom_reverts_allowance : ∀ {σ : Type} (ext : WETH9.Ext σ) (src dst wad : Nat)\n  (e : FormalAst.Env) (w : σ),\n  wad ≤ (ext.get w).balanceOf src →\n    src ≠ e.sender →\n      (ext.get w).allowance src e.sender ≠ 2 ^ 256 - 1 →\n        (ext.get w).allowance src e.sender < wad →\n          (ReaderT.run (WETH9.WETH9.transferFrom ext src dst wad) e).run w = Except.error { reason := \"require\" }",

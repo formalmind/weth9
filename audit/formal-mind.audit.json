@@ -171,6 +171,21 @@
           "line": 45
         }
       ]
+    },
+    {
+      "id": "P-S04",
+      "statement": "S-04",
+      "title": "No one can lower another account's balance except through an allowance that account gave them, and an allowance of uint(-1) is never spent down.",
+      "status": "verified",
+      "description": "Whenever a caller successfully moves a nonzero amount out of someone else's balance with transferFrom, src must have approved that caller for at least that amount beforehand. The allowance then goes down by exactly the amount moved, except an allowance of type(uint256).max, which stays the same. The other functions that write balanceOf (deposit, withdraw, transfer) are taken to change only the caller's own balance, or to raise someone else's. That part is an assumption here and is not proved.\n\n`S04.WETH9_transferFrom`: whenever `WETH9.transferFrom(src, dst, wad)` returns successfully with `src ≠ msg.sender`, two things hold:\n- Before the call, `allowance[src][msg.sender] ≥ wad`.\n- After the call, `allowance[src][msg.sender]` equals its old value minus `wad`. If the old value was `type(uint256).max`, it is unchanged.\n\nA third party can therefore debit `src` only up to an allowance `src` granted. Each successful debit spends exactly `wad` of that allowance, and an unlimited allowance is never spent down.\n\n**Assumptions.** deposit, withdraw and transfer never lower the balance of an account other than msg.sender (transfer delegates to transferFrom with src = msg.sender). Transfers to oneself (src == dst) and zero-amount transfers don't count as lowering a balance. uint(-1) means type(uint256).max. The storage accessor `ext` is lawful: get after set returns what was set, and a second set overwrites the first. `wad` and the stored allowance are below 2^256, which ABI decoding and uint256 storage guarantee. The hypotheses `src ≠ dst` and `wad > 0` from the statement are in the theorem but not needed by the proof. That deposit, withdraw and transfer never lower a balance other than the caller's is assumed, as the maintainer agreed, and is not proved here.",
+      "theorems": [
+        {
+          "name": "S04.WETH9_transferFrom"
+        }
+      ],
+      "files": [
+        "formal/Refinement/Statements/S04/WETH9TransferFrom.lean"
+      ]
     }
   ]
 }

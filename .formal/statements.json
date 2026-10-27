@@ -1,0 +1,49 @@
+{
+  "S-05": {
+    "1": {
+      "theorem": "S05.WETH9_approve",
+      "files": [
+        "formal/Refinement/Statements/S05/WETH9Approve.lean"
+      ],
+      "notes": {
+        "statement": "For any address `A` and any call to `WETH9.approve(guy, wad)` whose `msg.sender` is not `A`, the call:\n- always succeeds and returns `true`;\n- leaves the whole `balanceOf` mapping unchanged, so `A`'s balance and the sum of all balances stay the same;\n- leaves `allowance[A][·]` unchanged, so it gives no new account the right to spend `A`'s balance.\n\n`approve` is nonpayable and makes no external calls, so the contract's ETH balance does not change either. Solvency and `A`'s ability to `withdraw(balanceOf[A])` therefore still hold after another account calls `approve`.",
+        "assumptions": "The storage accessor satisfies `ext.get (ext.set w s) = s`. The model does not track ETH. That the contract's ETH balance is unchanged comes from the Solidity (`approve` is nonpayable and makes no external calls), not from the Lean theorem.",
+        "theorems": [
+          "S05.WETH9_approve",
+          "WETH9.approve_spec"
+        ]
+      }
+    }
+  },
+  "S-01": {
+    "1": {
+      "theorem": "S01.WETH9_approve",
+      "files": [
+        "formal/Refinement/Statements/S01/WETH9Approve.lean"
+      ],
+      "notes": {
+        "statement": "`WETH9.approve guy wad` preserves solvency (S-01). The call always succeeds and returns `true`. If, before the call, `Σ_{a∈S} balanceOf a ≤ address(this).balance` holds for every list `S` of distinct addresses, then it holds afterwards too. The call writes only `allowance[msg.sender][guy]`, so `balanceOf` and the contract's ETH balance stay the same.",
+        "assumptions": "Reading the storage record back after writing it returns what was written (`ext.get (ext.set w s) = s`). Balances are summed as unbounded naturals, with no uint256 wrap-around.",
+        "theorems": [
+          "S01.WETH9_approve",
+          "WETH9.approve_spec"
+        ]
+      }
+    }
+  },
+  "S-04": {
+    "1": {
+      "theorem": "S04.WETH9_transferFrom",
+      "files": [
+        "formal/Refinement/Statements/S04/WETH9TransferFrom.lean"
+      ],
+      "notes": {
+        "statement": "`S04.WETH9_transferFrom`: whenever `WETH9.transferFrom(src, dst, wad)` returns successfully with `src ≠ msg.sender`, two things hold:\n- Before the call, `allowance[src][msg.sender] ≥ wad`.\n- After the call, `allowance[src][msg.sender]` equals its old value minus `wad`. If the old value was `type(uint256).max`, it is unchanged.\n\nA third party can therefore debit `src` only up to an allowance `src` granted. Each successful debit spends exactly `wad` of that allowance, and an unlimited allowance is never spent down.",
+        "assumptions": "The storage accessor `ext` is lawful: get after set returns what was set, and a second set overwrites the first. `wad` and the stored allowance are below 2^256, which ABI decoding and uint256 storage guarantee. The hypotheses `src ≠ dst` and `wad > 0` from the statement are in the theorem but not needed by the proof. That deposit, withdraw and transfer never lower a balance other than the caller's is assumed, as the maintainer agreed, and is not proved here.",
+        "theorems": [
+          "S04.WETH9_transferFrom"
+        ]
+      }
+    }
+  }
+}
