@@ -44,8 +44,8 @@
     "files": [
       "formal/Refinement/Swarm/WETH9TransferFrom.lean"
     ],
-    "summary": "Written by an agent outside the app, through Formal Mind's MCP, in formal/Refinement/Swarm/WETH9TransferFrom.lean.\n\nRe-review: the approval lapsed because a statement prover added WETH9.Swarm.Cons.transferFrom_conserves (formal/Refinement/Swarm/WETH9Conservation.lean), which names WETH9.transferFrom. The four theorems in WETH9TransferFrom.lean (reverts on balance, reverts on allowance, succeeds spending, succeeds without spending an unlimited allowance) are unchanged; please check them and the new conservation lemma.",
-    "at": "1793134396223"
+    "summary": "Written by an agent outside the app, through Formal Mind's MCP, in formal/Refinement/Swarm/WETH9TransferFrom.lean.\n\nSame proofs as the approval a moment ago; that approval was recorded by the previous app version, whose ledger also counted the statement proofs, so it doesn't match. Please approve again if the theorems in WETH9TransferFrom.lean and WETH9.Swarm.Cons.transferFrom_conserves still hold.",
+    "at": "1793135492597"
   },
   "7": {
     "item": "`WETH9.totalSupply` — WETH9 (src/WETH9.sol:45): view · writes [] · guards 0 · external calls 0",

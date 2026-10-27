@@ -54,17 +54,9 @@
     },
     "WETH9.transferFrom": {
       "verdict": "approve",
-      "at": 1793134396223,
+      "at": 1793135492582,
       "defHash": "6cc7ae3546a03b2e",
       "theorems": {
-        "S01.WETH9_transferFrom": "ecf838cf273bb7dd",
-        "S02.WETH9_transferFrom": "72e2816373f1b4e0",
-        "S03.WETH9_transferFrom": "acfb5691f1b2980a",
-        "S04.WETH9_transferFrom": "c94b808fc0ac1993",
-        "S05.WETH9_transferFrom": "f3d31c9c8e0b7d46",
-        "S06.TransferFromAux.tf_ok": "3e25805ba53ca983",
-        "S06.WETH9_transferFrom": "5075a1d1f26799e6",
-        "S08.WETH9_transferFrom": "54f33c3839be36bf",
         "WETH9.Swarm.Cons.transferFrom_conserves": "c3446f0de40935d6",
         "WETH9.Swarm.TF.transferFrom_reverts_allowance": "2d942f4c56875c7e",
         "WETH9.Swarm.TF.transferFrom_reverts_balance": "f607a4d68c063b82",
@@ -73,7 +65,7 @@
         "WETH9.Swarm.transfer_reverts": "bd5fc3bc6d4ef635",
         "WETH9.Swarm.transfer_succeeds": "31873f8e29869295"
       },
-      "notes": "I approved plan item 6, `WETH9.transferFrom`. Both proof files build, and neither contains `sorry`, `admit` or new axioms.\n\n**The four original theorems** (`WETH9TransferFrom.lean`, unchanged) are stated about the generated def itself, not a restatement. Together they cover every path through it:\n- **Reverts on balance:** the call reverts when `balanceOf[src] < wad`.\n- **Reverts on allowance:** someone other than `src` with a finite allowance below `wad` gets a revert.\n- **Succeeds, spending the allowance:** it returns `true` and the theorem gives the exact final storage. The allowance goes down by `wad`, `src` is debited and `dst` is credited. Because the whole state is given, nothing else can change.\n- **Succeeds without spending:** when `src` is the caller, or the allowance is the maximum value (2^256 − 1, treated as unlimited), only `balanceOf` is written.\n\n**The new conservation lemma** (`transferFrom_conserves` in `WETH9Conservation.lean`) is built from those four theorems. Whenever the call succeeds, the sum of `balanceOf` over any list of distinct accounts that includes `src` and `dst` stays the same, including when `src = dst`. It assumes `balanceOf[src] < 2^256` and that crediting `dst` doesn't overflow when `src ≠ dst`, and both assumptions are stated plainly in the lemma.\n\nThe prover gave no notes for the report, so I wrote them in the verdict:\n- **Statement:** one bullet per theorem above.\n- **Assumptions:** reading storage after a write returns what was written, and a second write replaces the first. Also the two no-overflow conditions of the conservation lemma.\n- **Theorems:** all five names.\n\nI found no bug in the contract. Next is the next item in the plan."
+      "notes": "I approved plan item 6, `WETH9.transferFrom`. The proofs in `formal/Refinement/Swarm/WETH9TransferFrom.lean` and `WETH9.Swarm.Cons.transferFrom_conserves` still hold: they build with no errors and use no sorry, admit or new axioms. They're about the generated `WETH9.transferFrom`, and they cover every case:\n\n- **Reverts:** when `balanceOf[src] < wad`, and when someone other than the owner spends more than a finite allowance.\n- **Success, spending the allowance:** it returns `true`, lowers `allowance[src][msg.sender]` by `wad`, takes `wad` from `src` and adds it to `dst`.\n- **Success, allowance untouched:** when the caller is `src` or the allowance is the maximum value (`2^256-1`), only the balances change.\n- **Conservation:** whenever it succeeds, the total of the balances is unchanged, including when `src == dst`, as long as no value overflows.\n\nThe prover wrote no report notes, so I supplied the statement, assumptions and theorem list. The assumptions say the storage accessor behaves normally, the conservation result assumes nothing overflows, and the `Transfer` event isn't modelled. I found no bug in the contract. Nothing is left on this item."
     },
     "WETH9.totalSupply": {
       "verdict": "approve",
