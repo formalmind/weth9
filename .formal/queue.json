@@ -1,5 +1,5 @@
 {
-  "next_id": 1793124594,
+  "next_id": 1793124596,
   "jobs": [
     {
       "id": 1793124466,
@@ -2083,15 +2083,53 @@
       "kind": "prove",
       "item": 2,
       "text": "`WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after",
-      "state": "running",
+      "state": "done",
       "attempt": 4,
       "notes": "",
       "files": [
         "formal/Refinement/Statements/S02/WETH9Fallback.lean"
       ],
-      "summary": "",
+      "summary": "I proved `S02.WETH9_fallback`: if the invariant holds before a successful call to the fallback, it still holds after. It is in `formal/Refinement/Statements/S02/WETH9Fallback.lean`, and `lake build` passes with no `sorry`.\n\n**What it says:** suppose that before the call, for every list of distinct accounts S, the sum of `balanceOf` over S is at most `balance − msg.value` (the contract's ETH before this call's ETH arrived). Then the fallback succeeds, and afterwards that sum is at most `balance`, which is `totalSupply()`.\n\n**Why it holds:**\n- The fallback only runs `deposit`, which changes one storage entry: `balanceOf[msg.sender]`.\n- The addition there is unchecked, so if it overflowed it would wrap around to a smaller number. Either way the new balance is at most the old one plus `msg.value`.\n- So the sum over S grows by at most `msg.value`, and the old bound `balance − msg.value` becomes the new bound `balance`.\n\nThat reasoning was already proved in the same file as `S02.WETH9_`. I added the new theorem with the identical statement and proved it by applying `S02.WETH9_`, using an existing lemma about updating one entry of a sum (`S01.sum_upd_le`).\n\n**What it assumes:**\n- `msg.value` is at most the contract's balance, since the balance already includes the ETH this call brought.\n- Reading storage after writing it returns what was written.\n- Forced ETH (selfdestruct, coinbase) raises the balance without touching storage, so it can only widen the gap.\n\nI've recorded the property for the reviewer. The rest of S-02 is the same check for the other entry points: `deposit`, `withdraw`, `transfer`, `transferFrom` and `approve`.",
       "result": "",
       "statement": "S-02"
+    },
+    {
+      "id": 1793124595,
+      "kind": "review",
+      "item": 2,
+      "text": "`WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after",
+      "state": "done",
+      "attempt": 4,
+      "notes": "I proved `S02.WETH9_fallback`: if the invariant holds before a successful call to the fallback, it still holds after. It is in `formal/Refinement/Statements/S02/WETH9Fallback.lean`, and `lake build` passes with no `sorry`.\n\n**What it says:** suppose that before the call, for every list of distinct accounts S, the sum of `balanceOf` over S is at most `balance − msg.value` (the contract's ETH before this call's ETH arrived). Then the fallback succeeds, and afterwards that sum is at most `balance`, which is `totalSupply()`.\n\n**Why it holds:**\n- The fallback only runs `deposit`, which changes one storage entry: `balanceOf[msg.sender]`.\n- The addition there is unchecked, so if it overflowed it would wrap around to a smaller number. Either way the new balance is at most the old one plus `msg.value`.\n- So the sum over S grows by at most `msg.value`, and the old bound `balance − msg.value` becomes the new bound `balance`.\n\nThat reasoning was already proved in the same file as `S02.WETH9_`. I added the new theorem with the identical statement and proved it by applying `S02.WETH9_`, using an existing lemma about updating one entry of a sum (`S01.sum_upd_le`).\n\n**What it assumes:**\n- `msg.value` is at most the contract's balance, since the balance already includes the ETH this call brought.\n- Reading storage after writing it returns what was written.\n- Forced ETH (selfdestruct, coinbase) raises the balance without touching storage, so it can only widen the gap.\n\nI've recorded the property for the reviewer. The rest of S-02 is the same check for the other entry points: `deposit`, `withdraw`, `transfer`, `transferFrom` and `approve`.\n\nChecked by the swarm: `lake build` passes; the Proofs page counts it as proved by formal/Refinement/Statements/S01/WETH9Fallback.lean:27 S01.WETH9_; formal/Refinement/Statements/S01/WETH9Fallback.lean:45 S01.WETH9_fallback; formal/Refinement/Statements/S02/WETH9Fallback.lean:11 S02.WETH9_; formal/Refinement/Statements/S02/WETH9Fallback.lean:30 S02.WETH9_fallback; formal/Refinement/Statements/S05/WETH9Fallback.lean:10 S05.WETH9_; formal/Refinement/Statements/S06/WETH9Fallback.lean:42 S06.WETH9_; formal/Refinement/Swarm/WETH9Fallback.lean:7 fallback_spec; formal/Refinement/Swarm/WETH9Fallback.lean:18 fallback_frame.\n\n`S02.WETH9_fallback` has no sorry (#print axioms). Its type, as Lean reports it:\n```lean\n@S02.WETH9_fallback : ∀ {σ : Type} (ext : WETH9.Ext σ) (env : FormalAst.Env) (w : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    env.value ≤ env.balance →\n      (∀ (S : List Nat), S.Nodup → (List.map (ext.get w).balanceOf S).sum ≤ env.balance - env.value) →\n        ∃ w',\n          (ReaderT.run (WETH9.WETH9.«» ext) env).run w = Except.ok ((), w') ∧\n            ∀ (S : List Nat), S.Nodup → (List.map (ext.get w').balanceOf S).sum ≤ env.balance\n```",
+      "files": [
+        "formal/Refinement/Statements/S02/WETH9Fallback.lean"
+      ],
+      "summary": "I approved obligation 2 of S-02, `S02.WETH9_fallback`. If the sum of `balanceOf` over any list of distinct accounts is at most the contract's ETH before the call (`balance − msg.value`), the fallback succeeds and the sum is then at most `address(this).balance`, which is `totalSupply()`.\n\n- **It's about the real code:** the theorem is stated and proved on the generated `WETH9.«»`, not a restatement of it.\n- **Overflow is covered:** the addition in `deposit` is unchecked, and the proof shows the wrapped result is never above the exact sum. So the new balance grows by at most `msg.value`.\n- **It checks out:** no sorry or new axioms. `S02.WETH9_fallback` just applies `S02.WETH9_`, which has the identical statement and carries the proof.\n- **The report notes stand as written.** The assumptions are complete: `msg.value` is at most the balance, a storage read returns what was just written, and forced ETH (selfdestruct, coinbase) changes no storage.\n\nThe other S-02 obligations (`deposit`, `withdraw`, `transfer`, `transferFrom`, `approve`) still need review.",
+      "result": "approve",
+      "property": {
+        "statement": "`WETH9.«»` (the fallback, which runs `deposit`) keeps S-02: if for every duplicate-free list of accounts S, Σ_{a∈S} `balanceOf[a]` ≤ `address(this).balance − msg.value` before the call, then the call succeeds and afterwards Σ_{a∈S} `balanceOf[a]` ≤ `address(this).balance` for every such S. Only `balanceOf[msg.sender]` changes, by at most `msg.value` (the wrapped addition never goes above the exact sum).",
+        "assumptions": "`env.balance` is the contract's ETH balance after `msg.value` is credited (so `msg.value ≤ balance`), and `totalSupply()` = `address(this).balance`. The storage extension's `get` reads back what `set` wrote. Forced ETH only raises the balance and changes no storage, so it keeps the invariant trivially.",
+        "theorems": [
+          "S02.WETH9_fallback",
+          "S02.WETH9_"
+        ]
+      },
+      "statement": "S-02"
+    },
+    {
+      "id": 1793124596,
+      "kind": "prove",
+      "item": 2,
+      "text": "`WETH9.«»` — WETH9 (src/WETH9.sol:31): no call to it by another account makes the claim false",
+      "state": "running",
+      "attempt": 4,
+      "notes": "",
+      "files": [
+        "formal/Refinement/Statements/S05/WETH9Fallback.lean"
+      ],
+      "summary": "",
+      "result": "",
+      "statement": "S-05"
     }
   ],
   "spent": 0.0

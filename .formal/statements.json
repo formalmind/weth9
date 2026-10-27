@@ -340,6 +340,20 @@
           "S02.WETH9_transferFrom"
         ]
       }
+    },
+    "2": {
+      "theorem": "S02.WETH9_fallback",
+      "files": [
+        "formal/Refinement/Statements/S02/WETH9Fallback.lean"
+      ],
+      "notes": {
+        "statement": "`WETH9.«»` (the fallback, which runs `deposit`) keeps S-02: if for every duplicate-free list of accounts S, Σ_{a∈S} `balanceOf[a]` ≤ `address(this).balance − msg.value` before the call, then the call succeeds and afterwards Σ_{a∈S} `balanceOf[a]` ≤ `address(this).balance` for every such S. Only `balanceOf[msg.sender]` changes, by at most `msg.value` (the wrapped addition never goes above the exact sum).",
+        "assumptions": "`env.balance` is the contract's ETH balance after `msg.value` is credited (so `msg.value ≤ balance`), and `totalSupply()` = `address(this).balance`. The storage extension's `get` reads back what `set` wrote. Forced ETH only raises the balance and changes no storage, so it keeps the invariant trivially.",
+        "theorems": [
+          "S02.WETH9_fallback",
+          "S02.WETH9_"
+        ]
+      }
     }
   },
   "S-08": {

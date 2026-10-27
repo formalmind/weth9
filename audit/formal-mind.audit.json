@@ -289,6 +289,50 @@
         "formal/Refinement/Statements/S01/WETH9Transfer.lean",
         "formal/Refinement/Statements/S01/WETH9TransferFrom.lean"
       ]
+    },
+    {
+      "id": "P-S02",
+      "statement": "S-02",
+      "title": "totalSupply() can be larger than the sum of balances: ETH forced in (selfdestruct, coinbase) is counted but owned by no one.",
+      "status": "verified",
+      "description": "In every reachable state of WETH9, the sum of `balanceOf` over all accounts is at most `totalSupply()` (the contract's ETH balance, `address(this).balance`). Every entry point (receive/fallback, deposit, withdraw, transfer, transferFrom, approve) keeps this true. Equality is not guaranteed: ETH that reaches the contract without calling it (selfdestruct to it, coinbase rewards, ETH sent before deployment) raises `totalSupply()` but credits no `balanceOf`. So the gap `totalSupply() - sum(balanceOf)` is never negative and can be positive.\n\n**`WETH9.approve`**\n\n`WETH9.approve` preserves S-02. The call always succeeds and returns `true`. Its only storage write is `allowance[msg.sender][guy] = wad`, so every `balanceOf` entry is unchanged, and the contract's ETH balance (`totalSupply()`, modelled as `env.balance`) is the same before and after. So if `Σ_{a∈S} balanceOf a ≤ totalSupply()` holds before the call for every duplicate-free list of accounts `S`, it holds after.\n\n**`WETH9.«»`**\n\n`WETH9.«»` (the fallback, which runs `deposit`) keeps S-02: if for every duplicate-free list of accounts S, Σ_{a∈S} `balanceOf[a]` ≤ `address(this).balance − msg.value` before the call, then the call succeeds and afterwards Σ_{a∈S} `balanceOf[a]` ≤ `address(this).balance` for every such S. Only `balanceOf[msg.sender]` changes, by at most `msg.value` (the wrapped addition never goes above the exact sum).\n\n**`WETH9.deposit`**\n\n`WETH9.deposit` preserves the invariant Σ `balanceOf` ≤ `totalSupply()` (= `address(this).balance`). Suppose that before `msg.value` arrives, the sum of `balanceOf` over every finite list of distinct accounts is at most `balance - msg.value`. Then the call succeeds, and afterwards that sum is at most `balance`. Crediting `msg.sender` with the unchecked `addw 256 (b + v)` gives at most `b + v`, so the sum rises by at most `msg.value` while the ETH balance rises by exactly `msg.value`.\n\n**`WETH9.withdraw`**\n\n`WETH9.withdraw` keeps the S-02 invariant. Suppose that before the call, Σ `balanceOf` over every finite list of distinct accounts is at most the contract's ETH balance (`totalSupply()`), and the call succeeds. Then the same bound holds after the call. The guard `balanceOf[msg.sender] >= wad` makes the subtraction exact, so the storage write lowers Σ `balanceOf` by `wad` and leaves Σ `balanceOf` + `wad` ≤ ETH balance before the ETH is sent.\n\n**`WETH9.transfer`**\n\n`WETH9.transfer` preserves S-02: if `Σ_{a < 2^160} balanceOf a ≤ address(this).balance` holds before a successful call, it holds after. A successful `transfer` leaves the sum of all balances unchanged, including the self-transfer case `dst = msg.sender` (S03.WETH9_transfer). The function is nonpayable and sends no ETH, so the contract's balance is unchanged too.\n\n**`WETH9.transferFrom`**\n\n`WETH9.transferFrom` preserves the solvency bound: if the sum of `balanceOf` over all 2^160 addresses is at most `address(this).balance` (`totalSupply()`) before a successful call, it is still at most that after. Either allowance branch leaves the sum of balances unchanged, and the call moves no ETH, so the gap `totalSupply() − Σ balanceOf` stays the same.\n\n**Assumptions.** totalSupply() returns address(this).balance. Forced ETH is modelled as an environment step that raises the contract's balance and changes no storage. The ETH that withdraw sends out leaves the contract's balance exactly by wad, and a reentrant call during that send also keeps the invariant. No uint256 overflow of balanceOf entries (sum of balances is bounded by total ETH). The storage accessor reads back what was written (`ext.get (ext.set w s) = s`). `totalSupply()` is modelled as `env.balance`, which the call environment fixes. the nonpayable `msg.value` check is not modelled. `env.balance` is the contract's ETH balance after `msg.value` is credited (so `msg.value ≤ balance`), and `totalSupply()` = `address(this).balance`. The storage extension's `get` reads back what `set` wrote. Forced ETH only raises the balance and changes no storage, so it keeps the invariant trivially. Reading the state after writing it returns what was written (`ext.get (ext.set w s) = s`). `msg.value ≤ balance`, where the balance seen during the call already includes `msg.value`. \"Sum over all accounts\" means the sum over every finite list of distinct addresses. `ethBal` is the contract's ETH balance (`totalSupply()`), and storage writes don't change it. `ext.get` after `ext.set` returns the stored state. The low-level send of `wad` to msg.sender, including any reentrant calls, takes any state with Σ balanceOf + wad ≤ ethBal to one with Σ balanceOf ≤ ethBal. The sender's balance is below 2^256. `msg.sender` and `dst` are addresses (< 2^160). Every balance is < 2^256, and `balanceOf[dst] + wad` does not overflow when `dst ≠ msg.sender`. The storage accessors satisfy get-after-set and set-after-set. `address(this).balance` is `env.balance`, which this call does not change. `totalSupply()` is modeled as `e.balance`, which this nonpayable call does not change. Storage accessors are lawful: a read after a write returns what was written, and a later write replaces an earlier one. `src` and `dst` are 160-bit addresses. `balanceOf[src] < 2^256`, and if `src ≠ dst` then `balanceOf[dst] + wad < 2^256` (no uint256 wrap).",
+      "theorems": [
+        {
+          "name": "S02.WETH9_approve"
+        },
+        {
+          "name": "S02.WETH9_fallback"
+        },
+        {
+          "name": "S02.WETH9_"
+        },
+        {
+          "name": "S02.WETH9_deposit"
+        },
+        {
+          "name": "S01.WETH9_deposit"
+        },
+        {
+          "name": "S01.deposit_sum_upd_le"
+        },
+        {
+          "name": "S02.WETH9_withdraw"
+        },
+        {
+          "name": "S02.WETH9_transfer"
+        },
+        {
+          "name": "S02.WETH9_transferFrom"
+        }
+      ],
+      "files": [
+        "formal/Refinement/Statements/S02/WETH9Approve.lean",
+        "formal/Refinement/Statements/S02/WETH9Fallback.lean",
+        "formal/Refinement/Statements/S02/WETH9Deposit.lean",
+        "formal/Refinement/Statements/S02/WETH9Withdraw.lean",
+        "formal/Refinement/Statements/S02/WETH9Transfer.lean",
+        "formal/Refinement/Statements/S02/WETH9TransferFrom.lean"
+      ]
     }
   ]
 }

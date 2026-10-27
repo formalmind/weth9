@@ -77,8 +77,8 @@
     }
   },
   "checked": {
-    "at": 1793134061985,
-    "sources": "3:c73edbf9a23eafd7",
+    "at": 1793134111278,
+    "sources": "3:57a3a2ae22aaf207",
     "results": {
       "S01.WETH9_": {
         "ok": true,
@@ -150,6 +150,14 @@
       "S02.WETH9_deposit": {
         "ok": true,
         "ty": "@S02.WETH9_deposit : ∀ {σ : Type} (ext : WETH9.Ext σ) (env : FormalAst.Env) (w : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    env.value ≤ env.balance →\n      (∀ (S : List Nat), S.Nodup → (List.map (ext.get w).balanceOf S).sum ≤ env.balance - env.value) →\n        ∃ w',\n          (ReaderT.run (WETH9.WETH9.deposit ext) env).run w = Except.ok ((), w') ∧\n            ∀ (S : List Nat), S.Nodup → (List.map (ext.get w').balanceOf S).sum ≤ env.balance",
+        "axioms": [
+          "propext",
+          "Quot.sound"
+        ]
+      },
+      "S02.WETH9_fallback": {
+        "ok": true,
+        "ty": "@S02.WETH9_fallback : ∀ {σ : Type} (ext : WETH9.Ext σ) (env : FormalAst.Env) (w : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    env.value ≤ env.balance →\n      (∀ (S : List Nat), S.Nodup → (List.map (ext.get w).balanceOf S).sum ≤ env.balance - env.value) →\n        ∃ w',\n          (ReaderT.run (WETH9.WETH9.«» ext) env).run w = Except.ok ((), w') ∧\n            ∀ (S : List Nat), S.Nodup → (List.map (ext.get w').balanceOf S).sum ≤ env.balance",
         "axioms": [
           "propext",
           "Quot.sound"

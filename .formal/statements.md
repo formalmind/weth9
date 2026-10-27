@@ -14,7 +14,7 @@ Claims about the code in plain words, each proved or disproved by the swarm: `- 
   - [x] `WETH9.withdraw` — WETH9 (src/WETH9.sol:38): if it holds before a successful call, it holds after
   - [x] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): if it holds before a successful call, it holds after
   - [x] `WETH9.transferFrom` — WETH9 (src/WETH9.sol:59): if it holds before a successful call, it holds after
-- [~] S-02 · you · totalSupply() can be larger than the sum of balances: ETH forced in (selfdestruct, coinbase) is counted but owned by no one.
+- [x] S-02 · you · totalSupply() can be larger than the sum of balances: ETH forced in (selfdestruct, coinbase) is counted but owned by no one.
   - kind: invariant
   - means: In every reachable state of WETH9, the sum of `balanceOf` over all accounts is at most `totalSupply()` (the contract's ETH balance, `address(this).balance`). Every entry point (receive/fallback, deposit, withdraw, transfer, transferFrom, approve) keeps this true. Equality is not guaranteed: ETH that reaches the contract without calling it (selfdestruct to it, coinbase rewards, ETH sent before deployment) raises `totalSupply()` but credits no `balanceOf`. So the gap `totalSupply() - sum(balanceOf)` is never negative and can be positive.
   - assumes: totalSupply() returns address(this).balance
@@ -22,7 +22,7 @@ Claims about the code in plain words, each proved or disproved by the swarm: `- 
   - assumes: The ETH that withdraw sends out leaves the contract's balance exactly by wad, and a reentrant call during that send also keeps the invariant
   - assumes: No uint256 overflow of balanceOf entries (sum of balances is bounded by total ETH)
   - [x] `WETH9.approve` — WETH9 (src/WETH9.sol:49): if it holds before a successful call, it holds after
-  - [~] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
+  - [x] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
   - [x] `WETH9.deposit` — WETH9 (src/WETH9.sol:34): if it holds before a successful call, it holds after
   - [x] `WETH9.withdraw` — WETH9 (src/WETH9.sol:38): if it holds before a successful call, it holds after
   - [x] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): if it holds before a successful call, it holds after
@@ -51,7 +51,7 @@ Claims about the code in plain words, each proved or disproved by the swarm: `- 
   - assumes: Solvency: address(WETH9).balance >= sum of balanceOf in every reachable state. ETH forced in through selfdestruct only makes this easier to hold
   - assumes: A's balance can grow through deposits or incoming transfers, and 'all of it' means A's balance at the moment A withdraws
   - [x] `WETH9.approve` — WETH9 (src/WETH9.sol:49): no call to it by another account makes the claim false
-  - [ ] `WETH9.«»` — WETH9 (src/WETH9.sol:31): no call to it by another account makes the claim false
+  - [~] `WETH9.«»` — WETH9 (src/WETH9.sol:31): no call to it by another account makes the claim false
   - [x] `WETH9.deposit` — WETH9 (src/WETH9.sol:34): no call to it by another account makes the claim false
   - [x] `WETH9.withdraw` — WETH9 (src/WETH9.sol:38): no call to it by another account makes the claim false
   - [x] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): no call to it by another account makes the claim false
