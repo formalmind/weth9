@@ -2,7 +2,7 @@
 
 WETH9 is the canonical Wrapped Ether contract (`src/WETH9.sol`). You send it ETH and it records an equal ERC-20 balance for you. `withdraw` burns that balance and sends the ETH back. `totalSupply()` returns the ETH the contract holds.
 
-[Formal Mind](https://formal.team) generated a Lean model of every WETH9 function from solc's AST (`formal/Generated/WETH9.lean`). It then proved what each function does, in Lean 4 with no `sorry`, no `admit`, no `native_decide` and no new axioms. The proofs are in [`formal/Refinement/Swarm/`](formal/Refinement/Swarm/).
+[Formal Mind](https://formal.team) generated a Lean model of every WETH9 function from solc's AST (`formal/Specs/WETH9.lean`). It then proved what each function does, in Lean 4 with no `sorry`, no `admit`, no `native_decide` and no new axioms. The proofs are in [`formal/Proofs/Swarm/`](formal/Proofs/Swarm/).
 
 ## Functions
 
@@ -10,13 +10,13 @@ Every function in scope is **proved** in the proof ledger (`.formal/ledger.json`
 
 | Function | Status | Theorems | What it shows |
 |---|---|---|---|
-| `receive`/fallback (`WETH9.sol:31`) | proved | `fallback_spec`, `fallback_frame`: [WETH9Fallback.lean](formal/Refinement/Swarm/WETH9Fallback.lean) | It never reverts and only credits `msg.value` to the sender's balance. |
-| `deposit` (`:34`) | proved | `deposit_spec`, `deposit_frame`: [WETH9Deposit.lean](formal/Refinement/Swarm/WETH9Deposit.lean) | It never reverts, credits `msg.value` (mod 2^256) to `balanceOf[msg.sender]` and changes nothing else. |
-| `withdraw` (`:38`) | proved | `withdraw_reverts`, `withdraw_spec`, `withdraw_sub_exact`: [WETH9Withdraw.lean](formal/Refinement/Swarm/WETH9Withdraw.lean) | It reverts if the balance is below `wad`. Otherwise it subtracts exactly `wad` (no wraparound) before sending the ETH. |
-| `totalSupply` (`:45`) | proved | `totalSupply_spec`: [WETH9TotalSupply.lean](formal/Refinement/Swarm/WETH9TotalSupply.lean) | It returns the contract's ETH balance and changes no state. |
-| `approve` (`:49`) | proved | `approve_spec`, `approve_allowance`: [WETH9Approve.lean](formal/Refinement/Swarm/WETH9Approve.lean) | It sets `allowance[msg.sender][guy] = wad`, returns true and writes nothing else. |
-| `transfer` (`:55`) | proved | `transfer_reverts`, `transfer_succeeds`: [WETH9Transfer.lean](formal/Refinement/Swarm/WETH9Transfer.lean) | It behaves as `transferFrom(msg.sender, dst, wad)`: it reverts on insufficient balance, otherwise it moves `wad`. |
-| `transferFrom` (`:59`) | proved | `transferFrom_reverts_balance`, `transferFrom_reverts_allowance`, `transferFrom_succeeds_spend`, `transferFrom_succeeds_nospend`: [WETH9TransferFrom.lean](formal/Refinement/Swarm/WETH9TransferFrom.lean) | It reverts on low balance, or on low finite allowance when the caller is a third party. Otherwise it moves `wad`, and spends the allowance only when the caller is a third party whose allowance is not `uint(-1)`. |
+| `receive`/fallback (`WETH9.sol:31`) | proved | `fallback_spec`, `fallback_frame`: [WETH9Fallback.lean](formal/Proofs/Swarm/WETH9Fallback.lean) | It never reverts and only credits `msg.value` to the sender's balance. |
+| `deposit` (`:34`) | proved | `deposit_spec`, `deposit_frame`: [WETH9Deposit.lean](formal/Proofs/Swarm/WETH9Deposit.lean) | It never reverts, credits `msg.value` (mod 2^256) to `balanceOf[msg.sender]` and changes nothing else. |
+| `withdraw` (`:38`) | proved | `withdraw_reverts`, `withdraw_spec`, `withdraw_sub_exact`: [WETH9Withdraw.lean](formal/Proofs/Swarm/WETH9Withdraw.lean) | It reverts if the balance is below `wad`. Otherwise it subtracts exactly `wad` (no wraparound) before sending the ETH. |
+| `totalSupply` (`:45`) | proved | `totalSupply_spec`: [WETH9TotalSupply.lean](formal/Proofs/Swarm/WETH9TotalSupply.lean) | It returns the contract's ETH balance and changes no state. |
+| `approve` (`:49`) | proved | `approve_spec`, `approve_allowance`: [WETH9Approve.lean](formal/Proofs/Swarm/WETH9Approve.lean) | It sets `allowance[msg.sender][guy] = wad`, returns true and writes nothing else. |
+| `transfer` (`:55`) | proved | `transfer_reverts`, `transfer_succeeds`: [WETH9Transfer.lean](formal/Proofs/Swarm/WETH9Transfer.lean) | It behaves as `transferFrom(msg.sender, dst, wad)`: it reverts on insufficient balance, otherwise it moves `wad`. |
+| `transferFrom` (`:59`) | proved | `transferFrom_reverts_balance`, `transferFrom_reverts_allowance`, `transferFrom_succeeds_spend`, `transferFrom_succeeds_nospend`: [WETH9TransferFrom.lean](formal/Proofs/Swarm/WETH9TransferFrom.lean) | It reverts on low balance, or on low finite allowance when the caller is a third party. Otherwise it moves `wad`, and spends the allowance only when the caller is a third party whose allowance is not `uint(-1)`. |
 
 The function theorems are stated over an abstract storage accessor `ext`. Where a theorem relies on storage behaving as storage, it assumes that reading back a written state returns it (`ext.get (ext.set w s) = s`), and in `transferFrom` that the last write wins.
 
@@ -28,7 +28,7 @@ These are claims from `.formal/statements.md`.
 |---|---|---|---|
 | S-01 | Solvency: the sum of all balances never exceeds the contract's ETH | `[ ]` open (invariant) | none yet |
 | S-02 | `totalSupply()` ≥ sum of balances, and it can be strictly greater (forced ETH) | `[ ]` open (invariant) | none yet |
-| S-03 | `transfer`/`transferFrom` conserve the sum of balances, including self-transfer | `[~]` working (conservation): `transferFrom` proved, `transfer` next | `moveBal_sum`, `transferFrom_conserves`: [WETH9Conservation.lean](formal/Refinement/Swarm/WETH9Conservation.lean). Whenever `transferFrom` succeeds, through either branch and including `src = dst`, the sum of `balanceOf` over any duplicate-free list of accounts containing `src` and `dst` is unchanged. It assumes `balanceOf[src] < 2^256` and that `balanceOf[dst] + wad` doesn't wrap. |
+| S-03 | `transfer`/`transferFrom` conserve the sum of balances, including self-transfer | `[~]` working (conservation): `transferFrom` proved, `transfer` next | `moveBal_sum`, `transferFrom_conserves`: [WETH9Conservation.lean](formal/Proofs/Swarm/WETH9Conservation.lean). Whenever `transferFrom` succeeds, through either branch and including `src = dst`, the sum of `balanceOf` over any duplicate-free list of accounts containing `src` and `dst` is unchanged. It assumes `balanceOf[src] < 2^256` and that `balanceOf[dst] + wad` doesn't wrap. |
 | S-04 | Only an allowance lets someone lower another account's balance, and a `uint(-1)` allowance is never spent down | `[?]` waiting for the maintainer to confirm the formalization | none yet |
 | S-05 | Anyone can always withdraw their whole balance unless their own address rejects a 2300-gas ETH send | `[ ]` open | none yet |
 
@@ -48,7 +48,7 @@ No bugs have been reported (`audit/formal-mind.audit.json`).
 cd formal && lake build
 ```
 
-This builds the generated model and every proof under `formal/Refinement/`. It needs no Mathlib. It should end with `Build completed successfully`.
+This builds the generated model and every proof under `formal/Proofs/`. It needs no Mathlib. It should end with `Build completed successfully`.
 
 <!-- formal-mind:start -->
 ## Verification
@@ -59,13 +59,13 @@ This builds the generated model and every proof under `formal/Refinement/`. It n
 
 | Function | Status | Theorems | Shows |
 |---|---|---|---|
-| `WETH9.deposit` | proved | [`WETH9.deposit_spec`](formal/Refinement/Swarm/WETH9Deposit.lean#L7), [`WETH9.deposit_frame`](formal/Refinement/Swarm/WETH9Deposit.lean#L18), [`WETH9.fallback_spec`](formal/Refinement/Swarm/WETH9Fallback.lean#L7) | returns, reverts, writes |
-| `WETH9.«»` | proved | [`WETH9.fallback_spec`](formal/Refinement/Swarm/WETH9Fallback.lean#L7), [`WETH9.fallback_frame`](formal/Refinement/Swarm/WETH9Fallback.lean#L18) | returns, reverts, writes |
-| `WETH9.withdraw` | proved | [`WETH9.withdraw_reverts`](formal/Refinement/Swarm/WETH9Withdraw.lean#L10), [`WETH9.withdraw_spec`](formal/Refinement/Swarm/WETH9Withdraw.lean#L23) | returns, reverts, writes |
-| `WETH9.totalSupply` | proved | [`WETH9.totalSupply_spec`](formal/Refinement/Swarm/WETH9TotalSupply.lean#L6) | returns, reverts, writes |
-| `WETH9.approve` | proved | [`WETH9.approve_spec`](formal/Refinement/Swarm/WETH9Approve.lean#L8), [`WETH9.approve_allowance`](formal/Refinement/Swarm/WETH9Approve.lean#L17) | returns, reverts, writes |
-| `WETH9.transferFrom` | proved | [`WETH9.Swarm.Cons.transferFrom_conserves`](formal/Refinement/Swarm/WETH9Conservation.lean#L105), [`WETH9.Swarm.transfer_reverts`](formal/Refinement/Swarm/WETH9Transfer.lean#L10), [`WETH9.Swarm.transfer_succeeds`](formal/Refinement/Swarm/WETH9Transfer.lean#L21), [`WETH9.Swarm.TF.transferFrom_reverts_balance`](formal/Refinement/Swarm/WETH9TransferFrom.lean#L10), [`WETH9.Swarm.TF.transferFrom_reverts_allowance`](formal/Refinement/Swarm/WETH9TransferFrom.lean#L20), [`WETH9.Swarm.TF.transferFrom_succeeds_spend`](formal/Refinement/Swarm/WETH9TransferFrom.lean#L34), [`WETH9.Swarm.TF.transferFrom_succeeds_nospend`](formal/Refinement/Swarm/WETH9TransferFrom.lean#L60) | returns, reverts, writes |
-| `WETH9.transfer` | proved | [`WETH9.Swarm.transfer_reverts`](formal/Refinement/Swarm/WETH9Transfer.lean#L10), [`WETH9.Swarm.transfer_succeeds`](formal/Refinement/Swarm/WETH9Transfer.lean#L21) | returns, reverts, writes |
+| `WETH9.deposit` | proved | [`WETH9.deposit_spec`](formal/Proofs/Swarm/WETH9Deposit.lean#L7), [`WETH9.deposit_frame`](formal/Proofs/Swarm/WETH9Deposit.lean#L18), [`WETH9.fallback_spec`](formal/Proofs/Swarm/WETH9Fallback.lean#L7) | returns, reverts, writes |
+| `WETH9.«»` | proved | [`WETH9.fallback_spec`](formal/Proofs/Swarm/WETH9Fallback.lean#L7), [`WETH9.fallback_frame`](formal/Proofs/Swarm/WETH9Fallback.lean#L18) | returns, reverts, writes |
+| `WETH9.withdraw` | proved | [`WETH9.withdraw_reverts`](formal/Proofs/Swarm/WETH9Withdraw.lean#L10), [`WETH9.withdraw_spec`](formal/Proofs/Swarm/WETH9Withdraw.lean#L23) | returns, reverts, writes |
+| `WETH9.totalSupply` | proved | [`WETH9.totalSupply_spec`](formal/Proofs/Swarm/WETH9TotalSupply.lean#L6) | returns, reverts, writes |
+| `WETH9.approve` | proved | [`WETH9.approve_spec`](formal/Proofs/Swarm/WETH9Approve.lean#L8), [`WETH9.approve_allowance`](formal/Proofs/Swarm/WETH9Approve.lean#L17) | returns, reverts, writes |
+| `WETH9.transferFrom` | proved | [`WETH9.Swarm.Cons.transferFrom_conserves`](formal/Proofs/Swarm/WETH9Conservation.lean#L105), [`WETH9.Swarm.transfer_reverts`](formal/Proofs/Swarm/WETH9Transfer.lean#L10), [`WETH9.Swarm.transfer_succeeds`](formal/Proofs/Swarm/WETH9Transfer.lean#L21), [`WETH9.Swarm.TF.transferFrom_reverts_balance`](formal/Proofs/Swarm/WETH9TransferFrom.lean#L10), [`WETH9.Swarm.TF.transferFrom_reverts_allowance`](formal/Proofs/Swarm/WETH9TransferFrom.lean#L20), [`WETH9.Swarm.TF.transferFrom_succeeds_spend`](formal/Proofs/Swarm/WETH9TransferFrom.lean#L34), [`WETH9.Swarm.TF.transferFrom_succeeds_nospend`](formal/Proofs/Swarm/WETH9TransferFrom.lean#L60) | returns, reverts, writes |
+| `WETH9.transfer` | proved | [`WETH9.Swarm.transfer_reverts`](formal/Proofs/Swarm/WETH9Transfer.lean#L10), [`WETH9.Swarm.transfer_succeeds`](formal/Proofs/Swarm/WETH9Transfer.lean#L21) | returns, reverts, writes |
 
 ### Statements
 

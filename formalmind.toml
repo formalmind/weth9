@@ -2,5 +2,5 @@
 [lean]
 # The Lake project: the folder with the lakefile.
 project = "formal"
-# Where Lake reads the sources: Generated/ (the models formal-ast writes) and Refinement/ (the proofs).
+# Where Lake reads the sources: Specs/ (the models formal-ast writes) and Proofs/ (the proofs).
 sources = "formal"

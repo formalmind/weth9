@@ -3,7 +3,7 @@
     "1": {
       "theorem": "S05.WETH9_approve",
       "files": [
-        "formal/Refinement/Statements/S05/WETH9Approve.lean"
+        "formal/Proofs/Statements/S05/WETH9Approve.lean"
       ],
       "notes": {
         "statement": "For any address `A` and any call to `WETH9.approve(guy, wad)` whose `msg.sender` is not `A`, the call:\n- always succeeds and returns `true`;\n- leaves the whole `balanceOf` mapping unchanged, so `A`'s balance and the sum of all balances stay the same;\n- leaves `allowance[A][·]` unchanged, so it gives no new account the right to spend `A`'s balance.\n\n`approve` is nonpayable and makes no external calls, so the contract's ETH balance does not change either. Solvency and `A`'s ability to `withdraw(balanceOf[A])` therefore still hold after another account calls `approve`.",
@@ -17,7 +17,7 @@
     "3": {
       "theorem": "S05.WETH9_deposit",
       "files": [
-        "formal/Refinement/Statements/S05/WETH9Deposit.lean"
+        "formal/Proofs/Statements/S05/WETH9Deposit.lean"
       ],
       "notes": {
         "statement": "`WETH9.deposit` called by any account other than `A` never reverts. On success:\n- `balanceOf[A]` is unchanged;\n- every allowance is unchanged;\n- solvency holds afterwards: for every duplicate-free list of addresses, the sum of `balanceOf` is at most the contract's ETH balance, given that it was at most `balance − msg.value` before.\n\nSo a deposit by another account cannot lower `A`'s balance or make the contract unable to pay `A` out.",
@@ -33,7 +33,7 @@
     "4": {
       "theorem": "S05.WETH9_withdraw",
       "files": [
-        "formal/Refinement/Statements/S05/WETH9Withdraw.lean"
+        "formal/Proofs/Statements/S05/WETH9Withdraw.lean"
       ],
       "notes": {
         "statement": "For any account `A` and any successful call `WETH9.withdraw(wad)` whose `msg.sender ≠ A`:\n- `balanceOf[A]` afterwards is at least what it was before. The function's only storage write is to `balanceOf[msg.sender]`.\n- Solvency holds afterwards: for every set of distinct addresses, the sum of their `balanceOf` is at most the contract's ETH balance.\n\nSo a withdraw by another account lowers neither `A`'s withdrawable balance nor the ETH that backs it.",
@@ -46,7 +46,7 @@
     "5": {
       "theorem": "S05.WETH9_transfer",
       "files": [
-        "formal/Refinement/Statements/S05/WETH9Transfer.lean"
+        "formal/Proofs/Statements/S05/WETH9Transfer.lean"
       ],
       "notes": {
         "statement": "For any account `A` and any call `WETH9.transfer(dst, wad)` made by a sender other than `A` that completes successfully, `balanceOf[A]` afterwards is at least its value before, and `allowance[A]` (every spender's entry) is unchanged. A call by another account to `transfer` therefore cannot lower `A`'s balance or change `A`'s approvals.",
@@ -59,7 +59,7 @@
     "6": {
       "theorem": "S05.WETH9_transferFrom",
       "files": [
-        "formal/Refinement/Statements/S05/WETH9TransferFrom.lean"
+        "formal/Proofs/Statements/S05/WETH9TransferFrom.lean"
       ],
       "notes": {
         "statement": "`WETH9.transferFrom` called by an account other than `A` that `A` has not approved (`allowance[A][msg.sender] = 0`) never lowers `balanceOf[A]`: on every successful run, `balanceOf'[A] ≥ balanceOf[A]`.\n- If `src = A`, the allowance guard (`allowance[A][sender] ≥ wad`, 0 ≠ 2^256−1) leaves `wad = 0` as the only value that succeeds, so A's balance is unchanged.\n- If `src ≠ A`, A's balance is either untouched or credited by `wad` (when `dst = A`).\nSo no third party can lower A's balance through `transferFrom`, and A's later `withdraw` of their full balance is not blocked by such a call.",
@@ -72,7 +72,7 @@
     "2": {
       "theorem": "S05.WETH9_fallback",
       "files": [
-        "formal/Refinement/Statements/S05/WETH9Fallback.lean"
+        "formal/Proofs/Statements/S05/WETH9Fallback.lean"
       ],
       "notes": {
         "statement": "Take a call to the fallback `WETH9.«»` (which runs `deposit`) by any sender other than an address A. Assume the state is solvent before the call: for every duplicate-free list of addresses, the sum of their `balanceOf` is at most the contract's ETH balance excluding this call's `msg.value`. Then:\n- the call succeeds;\n- `balanceOf[A]` is unchanged;\n- every `allowance` entry is unchanged;\n- solvency still holds afterwards: the sum of `balanceOf` over any duplicate-free list of addresses is at most `address(this).balance`.",
@@ -88,7 +88,7 @@
     "1": {
       "theorem": "S01.WETH9_approve",
       "files": [
-        "formal/Refinement/Statements/S01/WETH9Approve.lean"
+        "formal/Proofs/Statements/S01/WETH9Approve.lean"
       ],
       "notes": {
         "statement": "`WETH9.approve guy wad` preserves solvency (S-01). The call always succeeds and returns `true`. If, before the call, `Σ_{a∈S} balanceOf a ≤ address(this).balance` holds for every list `S` of distinct addresses, then it holds afterwards too. The call writes only `allowance[msg.sender][guy]`, so `balanceOf` and the contract's ETH balance stay the same.",
@@ -102,7 +102,7 @@
     "3": {
       "theorem": "S01.WETH9_deposit",
       "files": [
-        "formal/Refinement/Statements/S01/WETH9Deposit.lean"
+        "formal/Proofs/Statements/S01/WETH9Deposit.lean"
       ],
       "notes": {
         "statement": "`WETH9.deposit` preserves solvency (S-01). Take any state where, for every list of distinct addresses, the sum of `balanceOf` is at most the contract's ETH balance from before `msg.value` was credited (`env.balance - env.value`). In that state `deposit` succeeds, and in the resulting state the sum of `balanceOf` over any list of distinct addresses is at most `address(this).balance` (`env.balance`). The unchecked `balanceOf[msg.sender] += msg.value` writes `(b + v) mod 2^256 ≤ b + v`, so the sum rises by at most `msg.value`. This holds even when the addition wraps around.",
@@ -116,7 +116,7 @@
     "4": {
       "theorem": "S01.WETH9_withdraw",
       "files": [
-        "formal/Refinement/Statements/S01/WETH9Withdraw.lean"
+        "formal/Proofs/Statements/S01/WETH9Withdraw.lean"
       ],
       "notes": {
         "statement": "`S01.WETH9_withdraw`: for any successful call `WETH9.withdraw wad` taking world `w` to `w'`, if Σ_{a∈S} balanceOf[a] ≤ ethBal(w) holds for every finite set S of distinct addresses, then Σ_{a∈S} balanceOf[a] ≤ ethBal(w') holds for every such S.\n- The guard `balanceOf[sender] ≥ wad` and a uint256 balance make the unchecked subtraction exact. After the write, Σ_S balanceOf + wad ≤ Σ_{S∪{sender}} old balanceOf ≤ ethBal (`S01.withdraw_sum_upd`, `S01.withdraw_sum_upd_notin`). So the contract keeps at least `wad` of slack before the ETH is sent.\n- The reverting paths (failed guard, failed or reverting send) produce no `.ok` result, so they are excluded.",
@@ -131,7 +131,7 @@
     "5": {
       "theorem": "S01.WETH9_transfer",
       "files": [
-        "formal/Refinement/Statements/S01/WETH9Transfer.lean"
+        "formal/Proofs/Statements/S01/WETH9Transfer.lean"
       ],
       "notes": {
         "statement": "For `WETH9.transfer`: if the sum of `balanceOf[a]` over every address a (a < 2^160) is at most `address(this).balance` before a successful call, it is still at most that after. A successful `transfer` leaves the total of balances unchanged (theorem S03.WETH9_transfer, which also covers `dst = msg.sender`), and it moves no ETH, so the contract's balance is the same before and after.",
@@ -145,7 +145,7 @@
     "6": {
       "theorem": "S01.WETH9_transferFrom",
       "files": [
-        "formal/Refinement/Statements/S01/WETH9TransferFrom.lean"
+        "formal/Proofs/Statements/S01/WETH9TransferFrom.lean"
       ],
       "notes": {
         "statement": "If the sum of `balanceOf[a]` over all 2^160 addresses (taken over the naturals) is at most `address(this).balance` before a successful call to `WETH9.transferFrom`, the same bound holds afterwards. This covers any `src`, `dst` and `wad`, whether the allowance is spent or not (caller is `src`, or allowance is 2^256−1), and `src = dst`. A successful `transferFrom` leaves the total of balances unchanged. The call is nonpayable and sends no ETH, so the contract's ETH balance does not change.",
@@ -158,7 +158,7 @@
     "2": {
       "theorem": "S01.WETH9_fallback",
       "files": [
-        "formal/Refinement/Statements/S01/WETH9Fallback.lean"
+        "formal/Proofs/Statements/S01/WETH9Fallback.lean"
       ],
       "notes": {
         "statement": "`WETH9.«»` (the fallback, which runs `deposit`) preserves solvency. Suppose that before the call, for every duplicate-free list of addresses S, Σ_{a∈S} `balanceOf[a]` ≤ `address(this).balance − msg.value` (the contract's ETH before `msg.value` arrived), and `msg.value` ≤ `address(this).balance`. Then the call succeeds. In the resulting state, Σ_{a∈S} `balanceOf[a]` ≤ `address(this).balance` for every such S. The only write is `balanceOf[msg.sender]`, which is set to (old + msg.value) mod 2^256. That value is at most old + msg.value, so the sum grows by at most `msg.value`.",
@@ -174,7 +174,7 @@
     "1": {
       "theorem": "S04.WETH9_transferFrom",
       "files": [
-        "formal/Refinement/Statements/S04/WETH9TransferFrom.lean"
+        "formal/Proofs/Statements/S04/WETH9TransferFrom.lean"
       ],
       "notes": {
         "statement": "`S04.WETH9_transferFrom`: whenever `WETH9.transferFrom(src, dst, wad)` returns successfully with `src ≠ msg.sender`, two things hold:\n- Before the call, `allowance[src][msg.sender] ≥ wad`.\n- After the call, `allowance[src][msg.sender]` equals its old value minus `wad`. If the old value was `type(uint256).max`, it is unchanged.\n\nA third party can therefore debit `src` only up to an allowance `src` granted. Each successful debit spends exactly `wad` of that allowance, and an unlimited allowance is never spent down.",
@@ -189,7 +189,7 @@
     "1": {
       "theorem": "S06.WETH9_approve",
       "files": [
-        "formal/Refinement/Statements/S06/WETH9Approve.lean"
+        "formal/Proofs/Statements/S06/WETH9Approve.lean"
       ],
       "notes": {
         "statement": "`WETH9.approve` preserves the S-06 balance relation. If, before the call, every account outside a finite list `S` has zero `balanceOf` and `Σ_{a∈S} balanceOf a + forced = address(this).balance` (the value `totalSupply()` returns, with `forced` the ghost total of forced-in ETH), then on every successful run both facts still hold in the post-call state. `approve` writes only `allowance[msg.sender][guy]`, so `balanceOf` is unchanged, and it moves no ETH.",
@@ -202,7 +202,7 @@
     "3": {
       "theorem": "S06.WETH9_deposit",
       "files": [
-        "formal/Refinement/Statements/S06/WETH9Deposit.lean"
+        "formal/Proofs/Statements/S06/WETH9Deposit.lean"
       ],
       "notes": {
         "statement": "S-06 is preserved by `WETH9.deposit`. Take a duplicate-free list `S` of addresses that contains `msg.sender` and covers every account with a nonzero balance. Suppose `Σ_{a∈S} balanceOf a + forced` equals the contract's balance before `msg.value` arrived (`env.balance - env.value`). Then after a successful `deposit`, `Σ_{a∈S} balanceOf a + forced = env.balance`, which is `address(this).balance`, the value `totalSupply()` returns. Every account outside `S` still holds zero. The unchecked `+=` cannot wrap: the sender's balance plus `msg.value` is at most the contract balance, which is below 2^256.",
@@ -215,7 +215,7 @@
     "4": {
       "theorem": "S06.WETH9_withdraw",
       "files": [
-        "formal/Refinement/Statements/S06/WETH9Withdraw.lean"
+        "formal/Proofs/Statements/S06/WETH9Withdraw.lean"
       ],
       "notes": {
         "statement": "S-06 holds for `WETH9.withdraw`. The invariant is `Σ_{a∈S} balanceOf[a] + forced = address(this).balance`, where `S` is a duplicate-free list of accounts containing `msg.sender`, every balance outside `S` is zero, and `forced` is the ghost total of ETH forced in.\n\nIf the invariant holds with the contract balance `env.balance` before a successful `withdraw(wad)`, then afterwards:\n- every account outside `S` still has zero balance;\n- `Σ_{a∈S} balanceOf[a] + forced = env.balance − wad`, which is the contract's balance after `wad` wei go to `msg.sender`;\n- `wad ≤ env.balance`, so the subtraction never truncates.\n\nThe proof has three steps:\n- By the guard `balanceOf[msg.sender] ≥ wad`, the unchecked subtraction is exact.\n- Lowering one term of the sum by `wad` lowers the sum by exactly `wad` (lemma `S06.wd_sum_upd_sub`).\n- A call that reverts, or whose send fails, has no successful post-state.",
@@ -229,7 +229,7 @@
     "5": {
       "theorem": "S06.WETH9_transfer",
       "files": [
-        "formal/Refinement/Statements/S06/WETH9Transfer.lean",
+        "formal/Proofs/Statements/S06/WETH9Transfer.lean",
         "scratch_unused.txt"
       ],
       "notes": {
@@ -243,7 +243,7 @@
     "6": {
       "theorem": "S06.WETH9_transferFrom",
       "files": [
-        "formal/Refinement/Statements/S06/WETH9TransferFrom.lean"
+        "formal/Proofs/Statements/S06/WETH9TransferFrom.lean"
       ],
       "notes": {
         "statement": "`WETH9.transferFrom` preserves S-06. Let `S` be a duplicate-free list of accounts such that every `balanceOf` outside `S` is zero and `Σ_{a∈S} balanceOf a + forced = address(this).balance`. Then after any successful `transferFrom(src, dst, wad)` there is a duplicate-free list `S'` such that every post-state `balanceOf` outside `S'` is zero and `Σ_{a∈S'} balanceOf' a + forced = address(this).balance`. This holds on both allowance branches and when `src = dst`. The call is nonpayable, so the contract's ETH balance in the conclusion is the same value as in the hypothesis.",
@@ -257,7 +257,7 @@
     "2": {
       "theorem": "S06.WETH9_fallback",
       "files": [
-        "formal/Refinement/Statements/S06/WETH9Fallback.lean"
+        "formal/Proofs/Statements/S06/WETH9Fallback.lean"
       ],
       "notes": {
         "statement": "The fallback `WETH9.«»` (which runs `deposit`) preserves S-06. Take a duplicate-free finite set S of accounts that contains `msg.sender`, with every account outside S at zero balance. Suppose that before the call `Σ_{a∈S} balanceOf[a] + forced = address(this).balance − msg.value`. Then on success, `Σ_{a∈S} balanceOf[a] + forced = address(this).balance` (the value `totalSupply()` returns), and every account outside S still has zero balance. The unchecked `balanceOf[msg.sender] += msg.value` cannot wrap under these hypotheses.",
@@ -275,7 +275,7 @@
     "1": {
       "theorem": "S03.WETH9_transfer",
       "files": [
-        "formal/Refinement/Statements/S03/WETH9Transfer.lean"
+        "formal/Proofs/Statements/S03/WETH9Transfer.lean"
       ],
       "notes": {
         "statement": "`WETH9.transfer` conserves total WETH: for any call that returns `.ok (r, w')`, the sum of `balanceOf a` over every address `a < 2^160` (`S03T.total balanceOf (2^160)`) is the same in `w'` as in `w`. This includes the self-transfer case `dst = msg.sender`, where the balance mapping comes back exactly as it was (debit `b − wad`, then credit `(b − wad) + wad = b`, with no wraparound). When `dst ≠ msg.sender`, the sender loses exactly `wad` and `dst` gains exactly `wad`. Reverting calls (`balanceOf[msg.sender] < wad`) produce no post-state. Supporting lemmas: `S03T.total_upd` (updating one entry k < n replaces `f k` by `v` in the total) and `S03T.total_congr`.",
@@ -290,7 +290,7 @@
     "2": {
       "theorem": "S03.WETH9_transferFrom",
       "files": [
-        "formal/Refinement/Statements/S03/WETH9TransferFrom.lean"
+        "formal/Proofs/Statements/S03/WETH9TransferFrom.lean"
       ],
       "notes": {
         "statement": "`WETH9.transferFrom` conserves the sum of `balanceOf` over every address (`List.range (2^160)`): on any successful call the total after equals the total before. This holds whether the allowance is spent or left alone (`src = msg.sender`, or allowance `2^256 - 1`). It also holds when `src = dst`, where the debit and credit hit the same entry and leave the balance unchanged.",
@@ -307,7 +307,7 @@
     "1": {
       "theorem": "S02.WETH9_approve",
       "files": [
-        "formal/Refinement/Statements/S02/WETH9Approve.lean"
+        "formal/Proofs/Statements/S02/WETH9Approve.lean"
       ],
       "notes": {
         "statement": "`WETH9.approve` preserves S-02. The call always succeeds and returns `true`. Its only storage write is `allowance[msg.sender][guy] = wad`, so every `balanceOf` entry is unchanged, and the contract's ETH balance (`totalSupply()`, modelled as `env.balance`) is the same before and after. So if `Σ_{a∈S} balanceOf a ≤ totalSupply()` holds before the call for every duplicate-free list of accounts `S`, it holds after.",
@@ -320,7 +320,7 @@
     "3": {
       "theorem": "S02.WETH9_deposit",
       "files": [
-        "formal/Refinement/Statements/S02/WETH9Deposit.lean"
+        "formal/Proofs/Statements/S02/WETH9Deposit.lean"
       ],
       "notes": {
         "statement": "`WETH9.deposit` preserves the invariant Σ `balanceOf` ≤ `totalSupply()` (= `address(this).balance`). Suppose that before `msg.value` arrives, the sum of `balanceOf` over every finite list of distinct accounts is at most `balance - msg.value`. Then the call succeeds, and afterwards that sum is at most `balance`. Crediting `msg.sender` with the unchecked `addw 256 (b + v)` gives at most `b + v`, so the sum rises by at most `msg.value` while the ETH balance rises by exactly `msg.value`.",
@@ -335,7 +335,7 @@
     "4": {
       "theorem": "S02.WETH9_withdraw",
       "files": [
-        "formal/Refinement/Statements/S02/WETH9Withdraw.lean"
+        "formal/Proofs/Statements/S02/WETH9Withdraw.lean"
       ],
       "notes": {
         "statement": "`WETH9.withdraw` keeps the S-02 invariant. Suppose that before the call, Σ `balanceOf` over every finite list of distinct accounts is at most the contract's ETH balance (`totalSupply()`), and the call succeeds. Then the same bound holds after the call. The guard `balanceOf[msg.sender] >= wad` makes the subtraction exact, so the storage write lowers Σ `balanceOf` by `wad` and leaves Σ `balanceOf` + `wad` ≤ ETH balance before the ETH is sent.",
@@ -348,7 +348,7 @@
     "5": {
       "theorem": "S02.WETH9_transfer",
       "files": [
-        "formal/Refinement/Statements/S02/WETH9Transfer.lean"
+        "formal/Proofs/Statements/S02/WETH9Transfer.lean"
       ],
       "notes": {
         "statement": "`WETH9.transfer` preserves S-02: if `Σ_{a < 2^160} balanceOf a ≤ address(this).balance` holds before a successful call, it holds after. A successful `transfer` leaves the sum of all balances unchanged, including the self-transfer case `dst = msg.sender` (S03.WETH9_transfer). The function is nonpayable and sends no ETH, so the contract's balance is unchanged too.",
@@ -361,7 +361,7 @@
     "6": {
       "theorem": "S02.WETH9_transferFrom",
       "files": [
-        "formal/Refinement/Statements/S02/WETH9TransferFrom.lean"
+        "formal/Proofs/Statements/S02/WETH9TransferFrom.lean"
       ],
       "notes": {
         "statement": "`WETH9.transferFrom` preserves the solvency bound: if the sum of `balanceOf` over all 2^160 addresses is at most `address(this).balance` (`totalSupply()`) before a successful call, it is still at most that after. Either allowance branch leaves the sum of balances unchanged, and the call moves no ETH, so the gap `totalSupply() − Σ balanceOf` stays the same.",
@@ -374,7 +374,7 @@
     "2": {
       "theorem": "S02.WETH9_fallback",
       "files": [
-        "formal/Refinement/Statements/S02/WETH9Fallback.lean"
+        "formal/Proofs/Statements/S02/WETH9Fallback.lean"
       ],
       "notes": {
         "statement": "`WETH9.«»` (the fallback, which runs `deposit`) keeps S-02: if for every duplicate-free list of accounts S, Σ_{a∈S} `balanceOf[a]` ≤ `address(this).balance − msg.value` before the call, then the call succeeds and afterwards Σ_{a∈S} `balanceOf[a]` ≤ `address(this).balance` for every such S. Only `balanceOf[msg.sender]` changes, by at most `msg.value` (the wrapped addition never goes above the exact sum).",
@@ -390,7 +390,7 @@
     "1": {
       "theorem": "S08.WETH9_transfer",
       "files": [
-        "formal/Refinement/Statements/S08/WETH9Transfer.lean"
+        "formal/Proofs/Statements/S08/WETH9Transfer.lean"
       ],
       "notes": {
         "statement": "`WETH9.transfer(dst, wad)` changes `balanceOf` only at `msg.sender` and `dst`: for every successful (non-reverting) call and every address `a` with `a ≠ msg.sender` and `a ≠ dst`, `balanceOf[a]` after the call equals `balanceOf[a]` before it.",
@@ -403,7 +403,7 @@
     "2": {
       "theorem": "S08.WETH9_transferFrom",
       "files": [
-        "formal/Refinement/Statements/S08/WETH9TransferFrom.lean"
+        "formal/Proofs/Statements/S08/WETH9TransferFrom.lean"
       ],
       "notes": {
         "statement": "For every call to `WETH9.transferFrom(src, dst, wad)` that does not revert, every address `a` with `a ≠ src` and `a ≠ dst` has the same `balanceOf[a]` after the call as before.",

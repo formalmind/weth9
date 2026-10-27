@@ -1,11 +1,11 @@
 name = "weth9-formal"
 version = "0.1.0"
-defaultTargets = ["Generated", "Refinement"]
+defaultTargets = ["Specs", "Proofs"]
 
 [[lean_lib]]
-name = "Generated"
-globs = ["Generated.+"]
+name = "Specs"
+globs = ["Specs.+"]
 
 [[lean_lib]]
-name = "Refinement"
-globs = ["Refinement.+"]
+name = "Proofs"
+globs = ["Proofs.+"]
