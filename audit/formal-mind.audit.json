@@ -333,6 +333,56 @@
         "formal/Refinement/Statements/S02/WETH9Transfer.lean",
         "formal/Refinement/Statements/S02/WETH9TransferFrom.lean"
       ]
+    },
+    {
+      "id": "P-S05",
+      "statement": "S-05",
+      "title": "Anyone holding a balance can always withdraw all of it (no call by another account can stop them), unless their own address rejects ETH sent with 2300 gas.",
+      "status": "verified",
+      "description": "Take any reachable state of WETH9 and any address A with balanceOf[A] = b. After any sequence of calls by other accounts (deposit, withdraw, transfer, transferFrom, approve), A can still call withdraw(balanceOf[A]) and it succeeds: A's balance drops to 0 and A receives that much ETH. Other accounts can't lower balanceOf[A] without A's approval, and they can't drain the contract's ETH below the total of all balances. The only allowed failure is A's own address reverting or running out of the 2300 gas when `transfer` sends it ETH. This rests on the fact that WETH9's ETH balance is always at least the sum of balanceOf (solvency).\n\n**`WETH9.approve`**\n\nFor any address `A` and any call to `WETH9.approve(guy, wad)` whose `msg.sender` is not `A`, the call:\n- always succeeds and returns `true`;\n- leaves the whole `balanceOf` mapping unchanged, so `A`'s balance and the sum of all balances stay the same;\n- leaves `allowance[A][·]` unchanged, so it gives no new account the right to spend `A`'s balance.\n\n`approve` is nonpayable and makes no external calls, so the contract's ETH balance does not change either. Solvency and `A`'s ability to `withdraw(balanceOf[A])` therefore still hold after another account calls `approve`.\n\n**`WETH9.«»`**\n\nTake a call to the fallback `WETH9.«»` (which runs `deposit`) by any sender other than an address A. Assume the state is solvent before the call: for every duplicate-free list of addresses, the sum of their `balanceOf` is at most the contract's ETH balance excluding this call's `msg.value`. Then:\n- the call succeeds;\n- `balanceOf[A]` is unchanged;\n- every `allowance` entry is unchanged;\n- solvency still holds afterwards: the sum of `balanceOf` over any duplicate-free list of addresses is at most `address(this).balance`.\n\n**`WETH9.deposit`**\n\n`WETH9.deposit` called by any account other than `A` never reverts. On success:\n- `balanceOf[A]` is unchanged;\n- every allowance is unchanged;\n- solvency holds afterwards: for every duplicate-free list of addresses, the sum of `balanceOf` is at most the contract's ETH balance, given that it was at most `balance − msg.value` before.\n\nSo a deposit by another account cannot lower `A`'s balance or make the contract unable to pay `A` out.\n\n**`WETH9.withdraw`**\n\nFor any account `A` and any successful call `WETH9.withdraw(wad)` whose `msg.sender ≠ A`:\n- `balanceOf[A]` afterwards is at least what it was before. The function's only storage write is to `balanceOf[msg.sender]`.\n- Solvency holds afterwards: for every set of distinct addresses, the sum of their `balanceOf` is at most the contract's ETH balance.\n\nSo a withdraw by another account lowers neither `A`'s withdrawable balance nor the ETH that backs it.\n\n**`WETH9.transfer`**\n\nFor any account `A` and any call `WETH9.transfer(dst, wad)` made by a sender other than `A` that completes successfully, `balanceOf[A]` afterwards is at least its value before, and `allowance[A]` (every spender's entry) is unchanged. A call by another account to `transfer` therefore cannot lower `A`'s balance or change `A`'s approvals.\n\n**`WETH9.transferFrom`**\n\n`WETH9.transferFrom` called by an account other than `A` that `A` has not approved (`allowance[A][msg.sender] = 0`) never lowers `balanceOf[A]`: on every successful run, `balanceOf'[A] ≥ balanceOf[A]`.\n- If `src = A`, the allowance guard (`allowance[A][sender] ≥ wad`, 0 ≠ 2^256−1) leaves `wad = 0` as the only value that succeeds, so A's balance is unchanged.\n- If `src ≠ A`, A's balance is either untouched or credited by `wad` (when `dst = A`).\nSo no third party can lower A's balance through `transferFrom`, and A's later `withdraw` of their full balance is not blocked by such a call.\n\n**Assumptions.** A has given no allowance, or 'another account' excludes spenders A has approved: an approved spender can move A's balance with transferFrom. The call has enough gas, and the call depth limit is not reached. Solvency: address(WETH9).balance >= sum of balanceOf in every reachable state. ETH forced in through selfdestruct only makes this easier to hold. A's balance can grow through deposits or incoming transfers, and 'all of it' means A's balance at the moment A withdraws. The storage accessor satisfies `ext.get (ext.set w s) = s`. The model does not track ETH. That the contract's ETH balance is unchanged comes from the Solidity (`approve` is nonpayable and makes no external calls), not from the Lean theorem. Storage read-after-write: `ext.get (ext.set w s) = s`. Before the call, the sum of balances over any duplicate-free address list is at most `env.balance - env.value`, and `env.value ≤ env.balance` (the environment's balance already includes `msg.value`). The sender is not A. `ext.get (ext.set w s) = s`, i.e. the storage accessor reads back what it wrote. `msg.value ≤ env.balance`, i.e. the incoming ETH is already counted in the contract's balance. Solvency held before the call, measured against the balance without `msg.value`. Storage writes do not change the contract's ETH balance, and `ext.get (ext.set w s) = s`. The caller's balance is below 2^256. The pre-state is solvent. The external ETH send to `msg.sender` is treated as a black box, and so is anything it re-enters. It is assumed not to lower `balanceOf[A]`. If it starts with Σ balanceOf + wad ≤ ETH, it is assumed to end solvent. This is the inductive hypothesis for the other functions of the claim. The storage accessor laws `ext.get (ext.set w s) = s` and `ext.set (ext.set w s) t = ext.set w t`. `balanceOf[A] + wad < 2^256`: since `wad` is at most the sender's balance, this follows from solvency (the sum of balances is at most the contract's ETH, which is far below 2^256). The proof covers only calls that succeed. a call that reverts leaves no state change. `ext.get`/`ext.set` behave as a lens (get after set returns the set state. set after set keeps the last). `balanceOf[A] < 2^256`, and crediting `wad` to A does not overflow (`balanceOf[A] + wad < 2^256`), which holds because the total supply is bounded by the ETH WETH9 holds. A has given the caller no allowance (an approved spender may move A's funds by design).",
+      "theorems": [
+        {
+          "name": "S05.WETH9_approve"
+        },
+        {
+          "name": "WETH9.approve_spec"
+        },
+        {
+          "name": "S05.WETH9_fallback"
+        },
+        {
+          "name": "S05.WETH9_"
+        },
+        {
+          "name": "S05.WETH9_deposit"
+        },
+        {
+          "name": "S01.WETH9_deposit"
+        },
+        {
+          "name": "WETH9.deposit_frame"
+        },
+        {
+          "name": "WETH9.deposit_spec"
+        },
+        {
+          "name": "S05.WETH9_withdraw"
+        },
+        {
+          "name": "S05.WETH9_transfer"
+        },
+        {
+          "name": "S05.WETH9_transferFrom"
+        }
+      ],
+      "files": [
+        "formal/Refinement/Statements/S05/WETH9Approve.lean",
+        "formal/Refinement/Statements/S05/WETH9Fallback.lean",
+        "formal/Refinement/Statements/S05/WETH9Deposit.lean",
+        "formal/Refinement/Statements/S05/WETH9Withdraw.lean",
+        "formal/Refinement/Statements/S05/WETH9Transfer.lean",
+        "formal/Refinement/Statements/S05/WETH9TransferFrom.lean"
+      ]
     }
   ]
 }

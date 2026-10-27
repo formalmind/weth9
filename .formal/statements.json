@@ -68,6 +68,20 @@
           "S05.WETH9_transferFrom"
         ]
       }
+    },
+    "2": {
+      "theorem": "S05.WETH9_fallback",
+      "files": [
+        "formal/Refinement/Statements/S05/WETH9Fallback.lean"
+      ],
+      "notes": {
+        "statement": "Take a call to the fallback `WETH9.«»` (which runs `deposit`) by any sender other than an address A. Assume the state is solvent before the call: for every duplicate-free list of addresses, the sum of their `balanceOf` is at most the contract's ETH balance excluding this call's `msg.value`. Then:\n- the call succeeds;\n- `balanceOf[A]` is unchanged;\n- every `allowance` entry is unchanged;\n- solvency still holds afterwards: the sum of `balanceOf` over any duplicate-free list of addresses is at most `address(this).balance`.",
+        "assumptions": "Storage read-after-write: `ext.get (ext.set w s) = s`. Before the call, the sum of balances over any duplicate-free address list is at most `env.balance - env.value`, and `env.value ≤ env.balance` (the environment's balance already includes `msg.value`). The sender is not A.",
+        "theorems": [
+          "S05.WETH9_fallback",
+          "S05.WETH9_"
+        ]
+      }
     }
   },
   "S-01": {

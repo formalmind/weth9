@@ -43,7 +43,7 @@ Claims about the code in plain words, each proved or disproved by the swarm: `- 
   - assumes: Transfers to oneself (src == dst) and zero-amount transfers don't count as lowering a balance
   - assumes: uint(-1) means type(uint256).max
   - [x] `WETH9.transferFrom` — WETH9 (src/WETH9.sol:59): If transferFrom(src, dst, wad) succeeds with msg.sender ≠ src, src ≠ dst and wad > 0, then before the call allowance[src][msg.sender] ≥ wad, and afterwards allowance[src][msg.sender] has dropped by exactly wad unless it was type(uint256).max, in which case it is unchanged.
-- [~] S-05 · you · Anyone holding a balance can always withdraw all of it (no call by another account can stop them), unless their own address rejects ETH sent with 2300 gas.
+- [x] S-05 · you · Anyone holding a balance can always withdraw all of it (no call by another account can stop them), unless their own address rejects ETH sent with 2300 gas.
   - kind: sequence
   - means: Take any reachable state of WETH9 and any address A with balanceOf[A] = b. After any sequence of calls by other accounts (deposit, withdraw, transfer, transferFrom, approve), A can still call withdraw(balanceOf[A]) and it succeeds: A's balance drops to 0 and A receives that much ETH. Other accounts can't lower balanceOf[A] without A's approval, and they can't drain the contract's ETH below the total of all balances. The only allowed failure is A's own address reverting or running out of the 2300 gas when `transfer` sends it ETH. This rests on the fact that WETH9's ETH balance is always at least the sum of balanceOf (solvency).
   - assumes: A has given no allowance, or 'another account' excludes spenders A has approved: an approved spender can move A's balance with transferFrom
@@ -51,7 +51,7 @@ Claims about the code in plain words, each proved or disproved by the swarm: `- 
   - assumes: Solvency: address(WETH9).balance >= sum of balanceOf in every reachable state. ETH forced in through selfdestruct only makes this easier to hold
   - assumes: A's balance can grow through deposits or incoming transfers, and 'all of it' means A's balance at the moment A withdraws
   - [x] `WETH9.approve` — WETH9 (src/WETH9.sol:49): no call to it by another account makes the claim false
-  - [~] `WETH9.«»` — WETH9 (src/WETH9.sol:31): no call to it by another account makes the claim false
+  - [x] `WETH9.«»` — WETH9 (src/WETH9.sol:31): no call to it by another account makes the claim false
   - [x] `WETH9.deposit` — WETH9 (src/WETH9.sol:34): no call to it by another account makes the claim false
   - [x] `WETH9.withdraw` — WETH9 (src/WETH9.sol:38): no call to it by another account makes the claim false
   - [x] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): no call to it by another account makes the claim false
@@ -64,7 +64,7 @@ Claims about the code in plain words, each proved or disproved by the swarm: `- 
   - assumes: withdraw's ETH transfer to msg.sender either succeeds in full or reverts the whole call (re-entry during the send leaves the relation intact)
   - assumes: The contract starts with zero balance and zero balanceOf everywhere, apart from ETH already forced in, which counts toward the forced amount
   - [x] `WETH9.approve` — WETH9 (src/WETH9.sol:49): if it holds before a successful call, it holds after
-  - [ ] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
+  - [~] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
   - [x] `WETH9.deposit` — WETH9 (src/WETH9.sol:34): if it holds before a successful call, it holds after
   - [x] `WETH9.withdraw` — WETH9 (src/WETH9.sol:38): if it holds before a successful call, it holds after
   - [x] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): if it holds before a successful call, it holds after

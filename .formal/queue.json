@@ -1,5 +1,5 @@
 {
-  "next_id": 1793124596,
+  "next_id": 1793124598,
   "jobs": [
     {
       "id": 1793124466,
@@ -2121,15 +2121,51 @@
       "kind": "prove",
       "item": 2,
       "text": "`WETH9.«»` — WETH9 (src/WETH9.sol:31): no call to it by another account makes the claim false",
-      "state": "running",
+      "state": "done",
       "attempt": 4,
       "notes": "",
       "files": [
         "formal/Refinement/Statements/S05/WETH9Fallback.lean"
       ],
-      "summary": "",
+      "summary": "S-05 holds for the fallback `WETH9.«»`. The theorem `S05.WETH9_fallback` is proved without `sorry` in `formal/Refinement/Statements/S05/WETH9Fallback.lean`, and `lake build Refinement.Statements.S05.WETH9Fallback` passes.\n\n**What it shows:** start from a state where WETH9 holds at least as much ETH as all balances added up (solvency). If any account other than A calls the fallback (which just runs `deposit`):\n- the call always succeeds;\n- `balanceOf[A]` is unchanged;\n- every allowance is unchanged;\n- solvency still holds afterwards.\n\nSo a fallback call by someone else can't lower A's balance or the ETH backing it, and A can still withdraw all of it.\n\n**Assumptions:**\n- Reading storage right after writing it returns what was written.\n- Solvency holds before the call, and the ETH sent with the call is no more than the contract's balance.\n- The caller is not A.\n\n**How it's proved:** the new theorem is a direct alias of `S05.WETH9_`, which was already in that file with the same statement. That proof combines two earlier results:\n- `S01.WETH9_`: the call succeeds and solvency is kept.\n- `WETH9.fallback_frame`: the fallback changes only the caller's balance, not other balances or any allowance.\n\nThe property and its assumptions are recorded for the reviewer, listing both theorem names. I didn't write `formal/Refinement/Swarm/WETH9Fallback.lean` because it already exists with `fallback_spec` and `fallback_frame`. Those two theorems state when the fallback reverts (never) and what it writes.\n\nNext is S-05 for the other functions, mainly `withdraw` and `transferFrom`.",
       "result": "",
       "statement": "S-05"
+    },
+    {
+      "id": 1793124597,
+      "kind": "review",
+      "item": 2,
+      "text": "`WETH9.«»` — WETH9 (src/WETH9.sol:31): no call to it by another account makes the claim false",
+      "state": "done",
+      "attempt": 4,
+      "notes": "S-05 holds for the fallback `WETH9.«»`. The theorem `S05.WETH9_fallback` is proved without `sorry` in `formal/Refinement/Statements/S05/WETH9Fallback.lean`, and `lake build Refinement.Statements.S05.WETH9Fallback` passes.\n\n**What it shows:** start from a state where WETH9 holds at least as much ETH as all balances added up (solvency). If any account other than A calls the fallback (which just runs `deposit`):\n- the call always succeeds;\n- `balanceOf[A]` is unchanged;\n- every allowance is unchanged;\n- solvency still holds afterwards.\n\nSo a fallback call by someone else can't lower A's balance or the ETH backing it, and A can still withdraw all of it.\n\n**Assumptions:**\n- Reading storage right after writing it returns what was written.\n- Solvency holds before the call, and the ETH sent with the call is no more than the contract's balance.\n- The caller is not A.\n\n**How it's proved:** the new theorem is a direct alias of `S05.WETH9_`, which was already in that file with the same statement. That proof combines two earlier results:\n- `S01.WETH9_`: the call succeeds and solvency is kept.\n- `WETH9.fallback_frame`: the fallback changes only the caller's balance, not other balances or any allowance.\n\nThe property and its assumptions are recorded for the reviewer, listing both theorem names. I didn't write `formal/Refinement/Swarm/WETH9Fallback.lean` because it already exists with `fallback_spec` and `fallback_frame`. Those two theorems state when the fallback reverts (never) and what it writes.\n\nNext is S-05 for the other functions, mainly `withdraw` and `transferFrom`.\n\nChecked by the swarm: `lake build` passes; the Proofs page counts it as proved by formal/Refinement/Statements/S01/WETH9Fallback.lean:27 S01.WETH9_; formal/Refinement/Statements/S01/WETH9Fallback.lean:45 S01.WETH9_fallback; formal/Refinement/Statements/S02/WETH9Fallback.lean:11 S02.WETH9_; formal/Refinement/Statements/S02/WETH9Fallback.lean:30 S02.WETH9_fallback; formal/Refinement/Statements/S05/WETH9Fallback.lean:10 S05.WETH9_; formal/Refinement/Statements/S05/WETH9Fallback.lean:26 S05.WETH9_fallback; formal/Refinement/Statements/S06/WETH9Fallback.lean:42 S06.WETH9_; formal/Refinement/Swarm/WETH9Fallback.lean:7 fallback_spec; formal/Refinement/Swarm/WETH9Fallback.lean:18 fallback_frame.\n\n`S05.WETH9_fallback` has no sorry (#print axioms). Its type, as Lean reports it:\n```lean\n@S05.WETH9_fallback : ∀ {σ : Type} (ext : WETH9.Ext σ) (env : FormalAst.Env) (w : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    ∀ (A : Nat),\n      env.sender ≠ A →\n        (∀ (S : List Nat), S.Nodup → (List.map (ext.get w).balanceOf S).sum ≤ env.balance - env.value) →\n          env.value ≤ env.balance →\n            ∃ w',\n              (ReaderT.run (WETH9.WETH9.«» ext) env).run w = Except.ok ((), w') ∧\n                (ext.get w').balanceOf A = (ext.get w).balanceOf A ∧\n                  (ext.get w').allowance = (ext.get w).allowance ∧\n                    ∀ (S : List Nat), S.Nodup → (List.map (ext.get w').balanceOf S).sum ≤ env.balance\n```",
+      "files": [
+        "formal/Refinement/Statements/S05/WETH9Fallback.lean"
+      ],
+      "summary": "I approved obligation 2 of S-05 for the fallback, and the verdict is recorded.\n\n`S05.WETH9_fallback` proves its claim about the generated `WETH9.«»` itself, not a restatement of it. It has no `sorry`, and its type gives what the obligation asks for. When an account other than A calls the fallback, starting from a solvent state:\n- the call always succeeds;\n- `balanceOf[A]` and every allowance stay the same;\n- solvency still holds afterwards, so A's balance stays fully backed by ETH.\n\nThe proof just combines two earlier results: `S01.WETH9_` (the call succeeds and solvency holds) and `fallback_frame` (only the caller's balance changes). I reworded the prover's report notes into third-person report style. I also added to the assumptions that the contract balance the model sees already includes the ETH sent with the call. That is why the solvency assumption before the call subtracts it.\n\n`deposit` adds `msg.value` to the caller's balance without an overflow check, but that's no bug here. A wraparound could only lower the caller's own balance, never A's, and a lower total keeps solvency true.\n\nNext are the S-05 obligations for `withdraw` and `transferFrom`.",
+      "result": "approve",
+      "property": {
+        "statement": "For `WETH9.«»` (the fallback, which runs `deposit`), take a call by any sender other than A, starting from a solvent state (the sum of `balanceOf` over any distinct addresses ≤ the ETH held before this call's `msg.value`, and `msg.value` ≤ balance). Then:\n- the call always succeeds;\n- `balanceOf[A]` does not change;\n- `allowance` does not change;\n- solvency still holds afterwards: for every duplicate-free list of addresses, the sum of their balances ≤ `address(this).balance`.\n\nSo no fallback call by another account can lower A's balance or the ETH backing it, and A can still withdraw all of it.",
+        "assumptions": "`ext.get (ext.set w s) = s` (storage read-after-write). Solvency before the call: the sum of balances ≤ `env.balance - env.value` and `env.value ≤ env.balance`. The sender is not A.",
+        "theorems": [
+          "S05.WETH9_fallback",
+          "S05.WETH9_"
+        ]
+      },
+      "statement": "S-05"
+    },
+    {
+      "id": 1793124598,
+      "kind": "prove",
+      "item": 2,
+      "text": "`WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after",
+      "state": "running",
+      "attempt": 4,
+      "notes": "",
+      "files": [],
+      "summary": "",
+      "result": "",
+      "statement": "S-06"
     }
   ],
   "spent": 0.0
