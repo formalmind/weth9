@@ -217,6 +217,25 @@
         "formal/Refinement/Statements/S03/WETH9Transfer.lean",
         "formal/Refinement/Statements/S03/WETH9TransferFrom.lean"
       ]
+    },
+    {
+      "id": "P-S08",
+      "statement": "S-08",
+      "title": "`WETH9.transfer` and `WETH9.transferFrom` change `balanceOf` only at `src` and `dst`: every other account's `balanceOf` is unchanged (and `allowance` changes only at `[src][msg.sender]` in `transferFrom`).",
+      "status": "verified",
+      "description": "For any call to `WETH9.transfer(dst, wad)` or `WETH9.transferFrom(src, dst, wad)` that does not revert, every address other than `src` and `dst` has the same `balanceOf` after the call as before. For `transfer`, `src` is `msg.sender`. Nothing is claimed about `allowance`, about the new balances of `src` and `dst`, or about calls that revert.\n\n**`WETH9.transfer`**\n\n`WETH9.transfer(dst, wad)` changes `balanceOf` only at `msg.sender` and `dst`: for every successful (non-reverting) call and every address `a` with `a ≠ msg.sender` and `a ≠ dst`, `balanceOf[a]` after the call equals `balanceOf[a]` before it.\n\n**`WETH9.transferFrom`**\n\nFor every call to `WETH9.transferFrom(src, dst, wad)` that does not revert, every address `a` with `a ≠ src` and `a ≠ dst` has the same `balanceOf[a]` after the call as before.\n\n**Assumptions.** For transfer, src is msg.sender (transfer delegates to transferFrom(msg.sender, dst, wad)). Only successful (non-reverting) calls are covered; a revert leaves all state unchanged anyway. src == dst is allowed; then only that one account may change (it actually nets to zero). The storage accessor `ext` behaves like a store: `get (set w s) = s` and `set (set w s) t = set w t`. The storage lens `ext` is lawful: reading after a write returns the written state, and a second write replaces the first.",
+      "theorems": [
+        {
+          "name": "S08.WETH9_transfer"
+        },
+        {
+          "name": "S08.WETH9_transferFrom"
+        }
+      ],
+      "files": [
+        "formal/Refinement/Statements/S08/WETH9Transfer.lean",
+        "formal/Refinement/Statements/S08/WETH9TransferFrom.lean"
+      ]
     }
   ]
 }
