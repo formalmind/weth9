@@ -2,14 +2,14 @@
 
 Claims about the code in plain words, each proved or disproved by the swarm: `- [ ]` open, `- [~]` working, `- [x]` proved, `- [!]` disproved, `- [?]` waiting for you, `- [-]` can't be proved against this model. Add your own as `- [ ] <the claim>`; the indented lines under each one are the swarm's.
 
-- [~] S-01 · you · Solvency: the sum of all balances never exceeds the ETH the contract holds, after any call.
+- [x] S-01 · you · Solvency: the sum of all balances never exceeds the ETH the contract holds, after any call.
   - kind: invariant
   - means: In every reachable state of WETH9, the sum of `balanceOf[a]` over all addresses a is at most `address(this).balance`. It holds at deployment (both zero). It keeps holding after every successful call to `deposit`, the receive/fallback, `withdraw`, `transfer`, `transferFrom` and `approve`, including when `withdraw`'s ETH send re-enters the contract.
   - assumes: ETH forced in without a call (selfdestruct, coinbase rewards) only raises the contract's balance, so it can only widen the gap. It is allowed, and the claim is ≤ rather than =.
   - assumes: The sum of balances is taken over the naturals (unbounded), not in uint256 with wrap-around.
   - assumes: Calls that revert leave the state unchanged, so they can't break the invariant.
   - [x] `WETH9.approve` — WETH9 (src/WETH9.sol:49): if it holds before a successful call, it holds after
-  - [-] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
+  - [x] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
   - [x] `WETH9.deposit` — WETH9 (src/WETH9.sol:34): if it holds before a successful call, it holds after
   - [x] `WETH9.withdraw` — WETH9 (src/WETH9.sol:38): if it holds before a successful call, it holds after
   - [x] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): if it holds before a successful call, it holds after
@@ -22,7 +22,7 @@ Claims about the code in plain words, each proved or disproved by the swarm: `- 
   - assumes: The ETH that withdraw sends out leaves the contract's balance exactly by wad, and a reentrant call during that send also keeps the invariant
   - assumes: No uint256 overflow of balanceOf entries (sum of balances is bounded by total ETH)
   - [x] `WETH9.approve` — WETH9 (src/WETH9.sol:49): if it holds before a successful call, it holds after
-  - [-] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
+  - [~] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
   - [x] `WETH9.deposit` — WETH9 (src/WETH9.sol:34): if it holds before a successful call, it holds after
   - [x] `WETH9.withdraw` — WETH9 (src/WETH9.sol:38): if it holds before a successful call, it holds after
   - [x] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): if it holds before a successful call, it holds after
@@ -51,7 +51,7 @@ Claims about the code in plain words, each proved or disproved by the swarm: `- 
   - assumes: Solvency: address(WETH9).balance >= sum of balanceOf in every reachable state. ETH forced in through selfdestruct only makes this easier to hold
   - assumes: A's balance can grow through deposits or incoming transfers, and 'all of it' means A's balance at the moment A withdraws
   - [x] `WETH9.approve` — WETH9 (src/WETH9.sol:49): no call to it by another account makes the claim false
-  - [-] `WETH9.«»` — WETH9 (src/WETH9.sol:31): no call to it by another account makes the claim false
+  - [ ] `WETH9.«»` — WETH9 (src/WETH9.sol:31): no call to it by another account makes the claim false
   - [x] `WETH9.deposit` — WETH9 (src/WETH9.sol:34): no call to it by another account makes the claim false
   - [x] `WETH9.withdraw` — WETH9 (src/WETH9.sol:38): no call to it by another account makes the claim false
   - [x] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): no call to it by another account makes the claim false
@@ -64,7 +64,7 @@ Claims about the code in plain words, each proved or disproved by the swarm: `- 
   - assumes: withdraw's ETH transfer to msg.sender either succeeds in full or reverts the whole call (re-entry during the send leaves the relation intact)
   - assumes: The contract starts with zero balance and zero balanceOf everywhere, apart from ETH already forced in, which counts toward the forced amount
   - [x] `WETH9.approve` — WETH9 (src/WETH9.sol:49): if it holds before a successful call, it holds after
-  - [-] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
+  - [ ] `WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after
   - [x] `WETH9.deposit` — WETH9 (src/WETH9.sol:34): if it holds before a successful call, it holds after
   - [x] `WETH9.withdraw` — WETH9 (src/WETH9.sol:38): if it holds before a successful call, it holds after
   - [x] `WETH9.transfer` — WETH9 (src/WETH9.sol:55): if it holds before a successful call, it holds after

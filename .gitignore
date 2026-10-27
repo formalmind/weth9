@@ -1,3 +1,4 @@
 out/
 cache/
 .formal/run.lock
+.formal/check/

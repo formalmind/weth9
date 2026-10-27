@@ -236,6 +236,59 @@
         "formal/Refinement/Statements/S08/WETH9Transfer.lean",
         "formal/Refinement/Statements/S08/WETH9TransferFrom.lean"
       ]
+    },
+    {
+      "id": "P-S01",
+      "statement": "S-01",
+      "title": "Solvency: the sum of all balances never exceeds the ETH the contract holds, after any call.",
+      "status": "verified",
+      "description": "In every reachable state of WETH9, the sum of `balanceOf[a]` over all addresses a is at most `address(this).balance`. It holds at deployment (both zero). It keeps holding after every successful call to `deposit`, the receive/fallback, `withdraw`, `transfer`, `transferFrom` and `approve`, including when `withdraw`'s ETH send re-enters the contract.\n\n**`WETH9.approve`**\n\n`WETH9.approve guy wad` preserves solvency (S-01). The call always succeeds and returns `true`. If, before the call, `Σ_{a∈S} balanceOf a ≤ address(this).balance` holds for every list `S` of distinct addresses, then it holds afterwards too. The call writes only `allowance[msg.sender][guy]`, so `balanceOf` and the contract's ETH balance stay the same.\n\n**`WETH9.«»`**\n\n`WETH9.«»` (the fallback, which runs `deposit`) preserves solvency. Suppose that before the call, for every duplicate-free list of addresses S, Σ_{a∈S} `balanceOf[a]` ≤ `address(this).balance − msg.value` (the contract's ETH before `msg.value` arrived), and `msg.value` ≤ `address(this).balance`. Then the call succeeds. In the resulting state, Σ_{a∈S} `balanceOf[a]` ≤ `address(this).balance` for every such S. The only write is `balanceOf[msg.sender]`, which is set to (old + msg.value) mod 2^256. That value is at most old + msg.value, so the sum grows by at most `msg.value`.\n\n**`WETH9.deposit`**\n\n`WETH9.deposit` preserves solvency (S-01). Take any state where, for every list of distinct addresses, the sum of `balanceOf` is at most the contract's ETH balance from before `msg.value` was credited (`env.balance - env.value`). In that state `deposit` succeeds, and in the resulting state the sum of `balanceOf` over any list of distinct addresses is at most `address(this).balance` (`env.balance`). The unchecked `balanceOf[msg.sender] += msg.value` writes `(b + v) mod 2^256 ≤ b + v`, so the sum rises by at most `msg.value`. This holds even when the addition wraps around.\n\n**`WETH9.withdraw`**\n\n`S01.WETH9_withdraw`: for any successful call `WETH9.withdraw wad` taking world `w` to `w'`, if Σ_{a∈S} balanceOf[a] ≤ ethBal(w) holds for every finite set S of distinct addresses, then Σ_{a∈S} balanceOf[a] ≤ ethBal(w') holds for every such S.\n- The guard `balanceOf[sender] ≥ wad` and a uint256 balance make the unchecked subtraction exact. After the write, Σ_S balanceOf + wad ≤ Σ_{S∪{sender}} old balanceOf ≤ ethBal (`S01.withdraw_sum_upd`, `S01.withdraw_sum_upd_notin`). So the contract keeps at least `wad` of slack before the ETH is sent.\n- The reverting paths (failed guard, failed or reverting send) produce no `.ok` result, so they are excluded.\n\n**`WETH9.transfer`**\n\nFor `WETH9.transfer`: if the sum of `balanceOf[a]` over every address a (a < 2^160) is at most `address(this).balance` before a successful call, it is still at most that after. A successful `transfer` leaves the total of balances unchanged (theorem S03.WETH9_transfer, which also covers `dst = msg.sender`), and it moves no ETH, so the contract's balance is the same before and after.\n\n**`WETH9.transferFrom`**\n\nIf the sum of `balanceOf[a]` over all 2^160 addresses (taken over the naturals) is at most `address(this).balance` before a successful call to `WETH9.transferFrom`, the same bound holds afterwards. This covers any `src`, `dst` and `wad`, whether the allowance is spent or not (caller is `src`, or allowance is 2^256−1), and `src = dst`. A successful `transferFrom` leaves the total of balances unchanged. The call is nonpayable and sends no ETH, so the contract's ETH balance does not change.\n\n**Assumptions.** ETH forced in without a call (selfdestruct, coinbase rewards) only raises the contract's balance, so it can only widen the gap. It is allowed, and the claim is ≤ rather than =. The sum of balances is taken over the naturals (unbounded), not in uint256 with wrap-around. Calls that revert leave the state unchanged, so they can't break the invariant. Reading the storage record back after writing it returns what was written (`ext.get (ext.set w s) = s`). Balances are summed as unbounded naturals, with no uint256 wrap-around. The storage accessor satisfies get-after-set (`ext.get (ext.set w s) = s`). `env.balance` already includes `msg.value`, as in the EVM. Sums are taken over the naturals, over any finite duplicate-free set of addresses. `ext.get (ext.set w s) = s`. `env.balance` is the contract's balance during the call, already credited with `msg.value` (so `msg.value ≤ env.balance`). Sums are taken in ℕ over any finite list of distinct addresses. - `ethBal : σ → Nat` models the contract's ETH balance in a world state, and storage writes (`ext.set`) do not change it. - `ext.get (ext.set w s) = s`. - `balanceOf[msg.sender] < 2^256` (uint256 storage). - The low-level call behind `msg.sender.transfer(wad)` (`ext.lowCall`) is taken as given: if it succeeds from a world where the sum of balanceOf over any set of distinct addresses, plus `wad`, is at most `ethBal`, then in the resulting world every such sum is at most `ethBal`. This covers sending `wad` ETH out and any re-entrant calls. Justifying it relies on the S-01 preservation theorems for the other entry points, by an argument over call depth. The storage accessors behave correctly (get after set returns what was set. a second set overwrites the first). The sender and `dst` are 160-bit addresses. Every stored balance is below 2^256. When `dst ≠ msg.sender`, `balanceOf[dst] + wad` does not overflow uint256. The sum is taken over the naturals. `ext.get`/`ext.set` behave as a lens on WETH9's storage (get-after-set, set-after-set). `src` and `dst` are below 2^160. The stored `balanceOf[src]` is below 2^256. When `src ≠ dst`, `balanceOf[dst] + wad` is below 2^256, so the unchecked `+=` does not wrap. This follows from the invariant whenever the ETH balance is below 2^256. The same environment (ETH balance) holds before and after the call.",
+      "theorems": [
+        {
+          "name": "S01.WETH9_approve"
+        },
+        {
+          "name": "WETH9.approve_spec"
+        },
+        {
+          "name": "S01.WETH9_fallback"
+        },
+        {
+          "name": "S01.sum_upd_le"
+        },
+        {
+          "name": "S01.WETH9_deposit"
+        },
+        {
+          "name": "S01.deposit_sum_upd_le"
+        },
+        {
+          "name": "S01.WETH9_withdraw"
+        },
+        {
+          "name": "S01.withdraw_sum_upd"
+        },
+        {
+          "name": "S01.withdraw_sum_upd_notin"
+        },
+        {
+          "name": "S01.WETH9_transfer"
+        },
+        {
+          "name": "S03.WETH9_transfer"
+        },
+        {
+          "name": "S01.WETH9_transferFrom"
+        }
+      ],
+      "files": [
+        "formal/Refinement/Statements/S01/WETH9Approve.lean",
+        "formal/Refinement/Statements/S01/WETH9Fallback.lean",
+        "formal/Refinement/Statements/S01/WETH9Deposit.lean",
+        "formal/Refinement/Statements/S01/WETH9Withdraw.lean",
+        "formal/Refinement/Statements/S01/WETH9Transfer.lean",
+        "formal/Refinement/Statements/S01/WETH9TransferFrom.lean"
+      ]
     }
   ]
 }

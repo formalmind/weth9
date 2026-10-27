@@ -140,6 +140,20 @@
         ],
         "assumptions": "`ext.get`/`ext.set` behave as a lens on WETH9's storage (get-after-set, set-after-set). `src` and `dst` are below 2^160. The stored `balanceOf[src]` is below 2^256. When `src ≠ dst`, `balanceOf[dst] + wad` is below 2^256, so the unchecked `+=` does not wrap. This follows from the invariant whenever the ETH balance is below 2^256. The same environment (ETH balance) holds before and after the call."
       }
+    },
+    "2": {
+      "theorem": "S01.WETH9_fallback",
+      "files": [
+        "formal/Refinement/Statements/S01/WETH9Fallback.lean"
+      ],
+      "notes": {
+        "statement": "`WETH9.«»` (the fallback, which runs `deposit`) preserves solvency. Suppose that before the call, for every duplicate-free list of addresses S, Σ_{a∈S} `balanceOf[a]` ≤ `address(this).balance − msg.value` (the contract's ETH before `msg.value` arrived), and `msg.value` ≤ `address(this).balance`. Then the call succeeds. In the resulting state, Σ_{a∈S} `balanceOf[a]` ≤ `address(this).balance` for every such S. The only write is `balanceOf[msg.sender]`, which is set to (old + msg.value) mod 2^256. That value is at most old + msg.value, so the sum grows by at most `msg.value`.",
+        "assumptions": "The storage accessor satisfies get-after-set (`ext.get (ext.set w s) = s`). `env.balance` already includes `msg.value`, as in the EVM. Sums are taken over the naturals, over any finite duplicate-free set of addresses.",
+        "theorems": [
+          "S01.WETH9_fallback",
+          "S01.sum_upd_le"
+        ]
+      }
     }
   },
   "S-04": {

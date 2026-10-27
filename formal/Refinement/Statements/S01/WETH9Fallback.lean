@@ -39,3 +39,14 @@ theorem S01.WETH9_ {σ : Type} (ext : WETH9.Ext σ) (env : Env) (w : σ)
   have h1 := S01.sum_upd_le _ _ _ _ hle S hS
   have h2 := hinv S hS
   omega
+
+/-- S-01 for the fallback: if solvency holds before the call (sum of balances ≤ the
+contract's ETH before `msg.value` arrived), the fallback succeeds and solvency holds after. -/
+theorem S01.WETH9_fallback {σ : Type} (ext : WETH9.Ext σ) (env : Env) (w : σ)
+    (hget : ∀ w s, ext.get (ext.set w s) = s)
+    (hval : env.value ≤ env.balance)
+    (hinv : ∀ S : List Nat, S.Nodup →
+      (S.map (ext.get w).balanceOf).sum ≤ env.balance - env.value) :
+    ∃ w' : σ, ((WETH9.«» ext).run env).run w = .ok ((), w') ∧
+      ∀ S : List Nat, S.Nodup → (S.map (ext.get w').balanceOf).sum ≤ env.balance :=
+  S01.WETH9_ ext env w hget hval hinv

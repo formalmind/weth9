@@ -1,5 +1,5 @@
 {
-  "next_id": 1793124591,
+  "next_id": 1793124594,
   "jobs": [
     {
       "id": 1793124466,
@@ -2038,6 +2038,60 @@
       "files": [],
       "summary": "",
       "result": ""
+    },
+    {
+      "id": 1793124592,
+      "kind": "prove",
+      "item": 2,
+      "text": "`WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after",
+      "state": "done",
+      "attempt": 5,
+      "notes": "",
+      "files": [
+        "formal/Refinement/Statements/S01/WETH9Fallback.lean"
+      ],
+      "summary": "I proved `S01.WETH9_fallback`: if the solvency invariant holds before a successful call to WETH9's fallback (`WETH9.«»`), it still holds after. `lake build` passes, and the property is recorded for the report.\n\n**What the theorem says.** Suppose that before the call, the sum of `balanceOf[a]` over any list of distinct addresses is at most the contract's ETH before `msg.value` arrived, i.e. `address(this).balance − msg.value`. Then the fallback succeeds, and the sum of balances is at most `address(this).balance` afterwards.\n\n**Why it holds.** The fallback just runs `deposit`, which writes one storage slot. It sets `balanceOf[msg.sender]` to `(old + msg.value) mod 2^256`, which is never more than `old + msg.value`. The existing lemma `S01.sum_upd_le` says that raising one entry by at most `d` raises a sum over distinct addresses by at most `d`. So the total grows by at most `msg.value`, and `omega` (Lean's arithmetic solver) closes the inequality.\n\n**What I changed.** The file `formal/Refinement/Statements/S01/WETH9Fallback.lean` already had this proof under the wrong name, `S01.WETH9_`. I added `S01.WETH9_fallback` with the same statement, proved by calling the existing theorem. I kept the old one rather than renaming it.\n\n**Assumptions.**\n- Reading storage after writing it returns what was written.\n- The contract's balance already includes `msg.value`, as in the EVM.\n- Sums are over the naturals, with no wrap-around.\n\nNext, the same step for the other WETH9 functions under S-01.",
+      "result": "",
+      "statement": "S-01"
+    },
+    {
+      "id": 1793124593,
+      "kind": "review",
+      "item": 2,
+      "text": "`WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after",
+      "state": "done",
+      "attempt": 5,
+      "notes": "I proved `S01.WETH9_fallback`: if the solvency invariant holds before a successful call to WETH9's fallback (`WETH9.«»`), it still holds after. `lake build` passes, and the property is recorded for the report.\n\n**What the theorem says.** Suppose that before the call, the sum of `balanceOf[a]` over any list of distinct addresses is at most the contract's ETH before `msg.value` arrived, i.e. `address(this).balance − msg.value`. Then the fallback succeeds, and the sum of balances is at most `address(this).balance` afterwards.\n\n**Why it holds.** The fallback just runs `deposit`, which writes one storage slot. It sets `balanceOf[msg.sender]` to `(old + msg.value) mod 2^256`, which is never more than `old + msg.value`. The existing lemma `S01.sum_upd_le` says that raising one entry by at most `d` raises a sum over distinct addresses by at most `d`. So the total grows by at most `msg.value`, and `omega` (Lean's arithmetic solver) closes the inequality.\n\n**What I changed.** The file `formal/Refinement/Statements/S01/WETH9Fallback.lean` already had this proof under the wrong name, `S01.WETH9_`. I added `S01.WETH9_fallback` with the same statement, proved by calling the existing theorem. I kept the old one rather than renaming it.\n\n**Assumptions.**\n- Reading storage after writing it returns what was written.\n- The contract's balance already includes `msg.value`, as in the EVM.\n- Sums are over the naturals, with no wrap-around.\n\nNext, the same step for the other WETH9 functions under S-01.\n\nChecked by the swarm: `lake build` passes; the Proofs page counts it as proved by formal/Refinement/Statements/S01/WETH9Fallback.lean:27 S01.WETH9_; formal/Refinement/Statements/S01/WETH9Fallback.lean:45 S01.WETH9_fallback; formal/Refinement/Statements/S02/WETH9Fallback.lean:11 S02.WETH9_; formal/Refinement/Statements/S05/WETH9Fallback.lean:10 S05.WETH9_; formal/Refinement/Statements/S06/WETH9Fallback.lean:42 S06.WETH9_; formal/Refinement/Swarm/WETH9Fallback.lean:7 fallback_spec; formal/Refinement/Swarm/WETH9Fallback.lean:18 fallback_frame.\n\n`S01.WETH9_fallback` has no sorry (#print axioms). Its type, as Lean reports it:\n```lean\n@S01.WETH9_fallback : ∀ {σ : Type} (ext : WETH9.Ext σ) (env : FormalAst.Env) (w : σ),\n  (∀ (w : σ) (s : WETH9.State), ext.get (ext.set w s) = s) →\n    env.value ≤ env.balance →\n      (∀ (S : List Nat), S.Nodup → (List.map (ext.get w).balanceOf S).sum ≤ env.balance - env.value) →\n        ∃ w',\n          (ReaderT.run (WETH9.WETH9.«» ext) env).run w = Except.ok ((), w') ∧\n            ∀ (S : List Nat), S.Nodup → (List.map (ext.get w').balanceOf S).sum ≤ env.balance\n```",
+      "files": [
+        "formal/Refinement/Statements/S01/WETH9Fallback.lean"
+      ],
+      "summary": "I approved `S01.WETH9_fallback`, which proves solvency is kept across the fallback.\n\n- **What it proves:** suppose that before the call the balances add up to at most the contract's ETH before `msg.value` arrived. Then the fallback always succeeds, and afterwards the balances add up to at most the contract's ETH.\n- **Assumption:** the only one is that reading storage right after a write returns what was written, and the prover's notes already list it.\n- **Clean:** there is no sorry, admit or new axiom, and the theorem is about the generated `WETH9.«»`, not a hand-written copy.\n- **Report:** it now cites `S01.WETH9_fallback` and its helper lemma `S01.sum_upd_le`. I left out the duplicate `S01.WETH9_`, which is the same proof under the old name.\n\nNext are the other S-01 obligations: `deposit`, `withdraw` (including when its ETH send re-enters the contract), `transfer`, `transferFrom` and `approve`.",
+      "result": "approve",
+      "property": {
+        "statement": "`WETH9.«»` (the fallback, which runs `deposit`) preserves solvency. Suppose that before the call, for every duplicate-free list of addresses S, Σ_{a∈S} `balanceOf[a]` ≤ `address(this).balance − msg.value` (the contract's ETH before `msg.value` arrived), and `msg.value` ≤ `address(this).balance`. Then the call succeeds. In the resulting state, Σ_{a∈S} `balanceOf[a]` ≤ `address(this).balance` for every such S. The only write is `balanceOf[msg.sender]`, which is set to (old + msg.value) mod 2^256. That value is at most old + msg.value, so the sum grows by at most `msg.value`.",
+        "assumptions": "The storage accessor satisfies get-after-set (`ext.get (ext.set w s) = s`). `env.balance` already includes `msg.value`, as in the EVM. Sums are taken over the naturals, over any finite duplicate-free set of addresses.",
+        "theorems": [
+          "S01.WETH9_fallback",
+          "S01.sum_upd_le",
+          "S01.WETH9_"
+        ]
+      },
+      "statement": "S-01"
+    },
+    {
+      "id": 1793124594,
+      "kind": "prove",
+      "item": 2,
+      "text": "`WETH9.«»` — WETH9 (src/WETH9.sol:31): if it holds before a successful call, it holds after",
+      "state": "running",
+      "attempt": 4,
+      "notes": "",
+      "files": [
+        "formal/Refinement/Statements/S02/WETH9Fallback.lean"
+      ],
+      "summary": "",
+      "result": "",
+      "statement": "S-02"
     }
   ],
   "spent": 0.0
