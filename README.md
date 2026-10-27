@@ -50,6 +50,10 @@ cd formal && lake build
 
 This builds the generated model and every proof under `formal/Proofs/`. It needs no Mathlib. It should end with `Build completed successfully`.
 
+## The bytecode
+
+[`bytecode/`](bytecode/) carries S-01 (solvency) and S-03 (transfer conservation) down to WETH9's compiled bytecode through [EquiVM](https://github.com/argotorg/EquiVM)'s refinement proof, so they don't trust the compiler. S-01 for `withdraw` rests on one stated assumption about the ETH it sends; see [bytecode/README.md](bytecode/README.md).
+
 <!-- formal-mind:start -->
 ## Verification
 
